@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# SQLite Databases & journaling/WAL files
+*.db
+*.db-wal
+*.db-shm
+*.db*
+
+# Cryptographic Anchor files
+anchor.json
+anchor.json*
+
+# Backups
+*.bak
+*.bak*
+backup/
+**/backup/
+
+# Build outputs
+dist/
