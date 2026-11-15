@@ -3,7 +3,6 @@
 
 const bcrypt = require("bcrypt");
 const db = require("./db");
-const { logAudit } = require("./audit");
 const { validatePasswordPolicy } = require("./utils/passwordPolicy");
 
 console.log("[Seed] Starting database seeding...");
@@ -88,7 +87,7 @@ const equipment = [
     type: "Spreader",
     location: "Mine-I / Overburden Dump",
     section: "Overburden",
-    running_hours: 14200,
+    running_hours: 38250,
     service_life_hours: 45000,
     last_service_date: "2026-08-20",
   },
@@ -148,7 +147,7 @@ const equipment = [
     type: "Pump",
     location: "Ash Handling Plant / TPS-I",
     section: "Auxiliary",
-    running_hours: 5800,
+    running_hours: 26800,
     service_life_hours: 25000,
     last_service_date: "2026-10-18",
   },
@@ -207,96 +206,98 @@ const seedDatabase = db.transaction(() => {
     );
   }
 
-  // 3. Optional sample PM schedule seeding (if table empty)
+  // 3. Preventive maintenance schedules seeding (one days-based, one hours-based)
   const pmCount = db.prepare("SELECT COUNT(*) as count FROM pm_schedules").get().count;
   if (pmCount === 0) {
     const eq1 = db.prepare("SELECT id FROM equipment WHERE code = ?").get("BWE-01");
     const eq2 = db.prepare("SELECT id FROM equipment WHERE code = ?").get("CVY-01");
     if (eq1) {
       db.prepare(`
-        INSERT INTO pm_schedules (equipment_id, task, interval_days, next_due)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO pm_schedules (equipment_id, task, trigger_type, interval_days, next_due)
+        VALUES (?, ?, 'days', ?, ?)
       `).run(
         eq1.id,
-        "Inspect bucket wheel teeth and hydraulic pressure",
-        2,
-        new Date(Date.now() + 2 * 60 * 1000).toISOString()
+        "Inspect bucket wheel teeth, hydraulic pressure and lubrication",
+        7,
+        new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
       );
     }
     if (eq2) {
       db.prepare(`
-        INSERT INTO pm_schedules (equipment_id, task, interval_days, next_due)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO pm_schedules (equipment_id, task, trigger_type, interval_hours, last_done_hours)
+        VALUES (?, ?, 'hours', ?, ?)
       `).run(
         eq2.id,
-        "Ultrasonic roller bearing inspection and belt tension check",
-        5,
-        new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        "Ultrasonic roller bearing inspection and drive motor lubrication",
+        500,
+        18500
       );
     }
   }
 
-  // 4. Optional sample compliance actions seeding (if table empty)
+  // 4. Compliance action items based on real CAG findings (with one past due)
+  // Action items are sample entries written from the audit findings for demonstration; they are not official NLCIL records.
   const actionCount = db.prepare("SELECT COUNT(*) as count FROM actions").get().count;
   if (actionCount === 0) {
     const supervisor = db.prepare("SELECT id FROM users WHERE email = ?").get("supervisor@nlc.in");
     const technician = db.prepare("SELECT id FROM users WHERE email = ?").get("technician@nlc.in");
 
-    if (supervisor) {
-      db.prepare(`
-        INSERT INTO actions (source, description, owner_id, due_date, status, evidence_note)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-        "CAG Report 35 of 2025",
-        "Implement continuous thermal imaging monitoring on high-capacity boiler feed pumps",
-        supervisor.id,
-        new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split("T")[0],
-        "In Progress",
-        "Sensors procured from vendor, installation scheduled for next shutdown."
-      );
-    }
+    const insertAction = db.prepare(`
+      INSERT INTO actions (source, description, owner_id, due_date, status, evidence_note)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
 
+    // 1. Circuit breakers maintenance (Past due date)
     if (technician) {
-      db.prepare(`
-        INSERT INTO actions (source, description, owner_id, due_date, status, evidence_note)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-        "Incident review committee",
-        "Install emergency pull-cord trip switches along shiftable conveyor system Line-B",
+      insertAction.run(
+        "CAG Report No. 35 of 2025",
+        "Preventive maintenance of circuit breakers to be completed on schedule as per SOP",
         technician.id,
-        new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().split("T")[0], // past due date
+        new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString().split("T")[0], // past due date
         "Open",
-        null
+        "Finding: A circuit-breaker service due in August 2021 was done in December 2021, followed by rotor damage and about 716 hours of outage."
+      );
+    }
+
+    // 2. Running-hours records for mining equipment (Status In Progress, future date)
+    if (supervisor) {
+      insertAction.run(
+        "CAG Report No. 35 of 2025",
+        "Maintain running-hours records for all specialised mining equipment",
+        supervisor.id,
+        new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split("T")[0], // future date
+        "In Progress",
+        "Finding: Working-hours data was not maintained for 26 of 72 machines."
+      );
+    }
+
+    // 3. Equipment beyond service life and structural stability tests (Future date)
+    if (supervisor) {
+      insertAction.run(
+        "CAG Report No. 35 of 2025",
+        "Plan rejuvenation or replacement for equipment beyond its service life, and complete structural stability tests",
+        supervisor.id,
+        new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().split("T")[0], // future date
+        "Open",
+        "Finding: Equipment operating beyond its service life without completing structural stability tests."
+      );
+    }
+
+    // 4. Housekeeping and lignite-dust cleaning checks (Future date)
+    if (technician) {
+      insertAction.run(
+        "CAG Report No. 35 of 2025",
+        "Strengthen housekeeping and lignite-dust cleaning checks in thermal power stations to prevent recurring fires",
+        technician.id,
+        new Date(Date.now() + 21 * 24 * 3600 * 1000).toISOString().split("T")[0], // future date
+        "Open",
+        "Finding: Fires recurred despite earlier committee recommendations."
       );
     }
   }
 
-  // 5. Sample initial work order
-  const woCount = db.prepare("SELECT COUNT(*) as count FROM work_orders").get().count;
-  if (woCount === 0) {
-    const eq = db.prepare("SELECT id FROM equipment WHERE code = ?").get("CVY-01");
-    const reqUser = db.prepare("SELECT id FROM users WHERE email = ?").get("requester@nlc.in");
-    if (eq && reqUser) {
-      db.prepare(`
-        INSERT INTO work_orders (title, description, equipment_id, requester_id, priority, status, type)
-        VALUES (?, ?, ?, ?, 'Medium', 'Submitted', 'corrective')
-      `).run(
-        "Conveyor belt idler roller vibration check",
-        "Inspect drive pulley bearing temperature and roller alignment",
-        eq.id,
-        reqUser.id
-      );
-    }
-  }
-
-  // 6. Initial audit ledger entries to establish cryptographic chain and anchor together
-  const auditCount = db.prepare("SELECT COUNT(*) as count FROM audit_log").get().count;
-  if (auditCount === 0) {
-    logAudit(1, "SYSTEM_INITIALIZED", "system", { message: "Database initialized with clean schema and seed data" });
-    logAudit(1, "EQUIPMENT_REGISTER_SEEDED", "equipment", { count: equipment.length });
-    logAudit(1, "PM_SCHEDULES_SEEDED", "pm_schedules", { count: 2 });
-    logAudit(1, "COMPLIANCE_ACTIONS_SEEDED", "actions", { count: 2 });
-  }
+  // 5. No work orders seeded so live demonstration can create one fresh
+  // 6. No fake audit rows seeded to maintain authentic cryptographic audit log
 });
 
 try {

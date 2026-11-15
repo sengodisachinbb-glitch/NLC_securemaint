@@ -124,6 +124,9 @@ npm run dev
 Every dummy account is pre-configured with the default password: **`NlcSecure@2026!`**  
 *(Satisfies the password policy: $\ge 10$ chars, uppercase, lowercase, number, symbol. The login page features 1-click **Quick Fill** buttons for all 5 roles).*
 
+> [!NOTE]
+> Default credentials are provided solely for this local development prototype and live evaluation. Production deployments must enforce unique, user-generated credentials and never publish passwords in source control or documentation.
+
 | Role | Name | Email | Default Password | Primary Responsibilities |
 | :--- | :--- | :--- | :--- | :--- |
 | **Admin** | Rajesh Kumar | `admin@nlc.in` | `NlcSecure@2026!` | System configuration, Equipment Register management, and Audit Log chain verification. Read-only access to work orders and actions; excluded from workflow sign-offs. |
@@ -241,7 +244,8 @@ This structured walkthrough demonstrates all requirements of the internship proj
 2. Within 60 seconds, refresh **📋 Work Orders**:
    - Show that the background `node-cron` job automatically generated a new work order titled `[PM] Ultrasonic roller vibration scan (CVY-01)` with status `Submitted` and type `preventive`—without any manual user input!
 3. Open **🛡️ Action Tracker**:
-   - Point out statutory findings from **CAG Report 35 of 2025** and DGMS safety circulars.
+   - Point out statutory findings from **CAG Report No. 35 of 2025**.
+   - *Note: Action items are sample entries written from the audit findings for demonstration; they are not official NLCIL records.*
    - Highlight the red **`OVERDUE`** indicator on actions past their due date that haven't been verified by management.
 
 ---

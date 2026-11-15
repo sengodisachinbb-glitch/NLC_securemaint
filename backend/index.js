@@ -59,20 +59,23 @@ app.use(express.json()); // Parses incoming JSON payloads
 // -------------------------------------------------------------
 // Rate Limiting (express-rate-limit)
 // -------------------------------------------------------------
-// 1. General API rate limiter: max 200 requests per 15-minute window per IP
+const apiRateLimitMax = process.env.API_RATE_LIMIT_MAX ? Number(process.env.API_RATE_LIMIT_MAX) : 200;
+const loginRateLimitMax = process.env.LOGIN_RATE_LIMIT_MAX ? Number(process.env.LOGIN_RATE_LIMIT_MAX) : 10;
+
+// 1. General API rate limiter: max 200 requests per 15-minute window per IP (or API_RATE_LIMIT_MAX)
 const generalApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: apiRateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests from this IP. Please try again after 15 minutes." }
 });
 app.use("/api/", generalApiLimiter);
 
-// 2. Strict Authentication rate limiter: max 10 login attempts per 15-minute window per IP
+// 2. Strict Authentication rate limiter: max 10 login attempts per 15-minute window per IP (or LOGIN_RATE_LIMIT_MAX)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: loginRateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many login attempts from this IP address. Please try again after 15 minutes." }

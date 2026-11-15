@@ -21,6 +21,9 @@ anchor.json*
 *.bak*
 backup/
 **/backup/
+backup-before-demo-reset/
+**/demo-baseline/
+demo-baseline/
 
 # Build outputs
 dist/

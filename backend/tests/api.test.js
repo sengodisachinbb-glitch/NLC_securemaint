@@ -649,11 +649,21 @@ describe("NLC-SecureMaint API Test Suite", () => {
         "utf8"
       );
 
-      execSync("npm run seed", { cwd: tempDir, stdio: "ignore" });
+      const nodeModulesDir = path.join(rootBackend, "node_modules");
+      execSync("npm run seed", {
+        cwd: tempDir,
+        env: { ...process.env, NODE_PATH: nodeModulesDir },
+        stdio: "ignore"
+      });
 
       tempProc = spawn(process.execPath, ["index.js"], {
         cwd: tempDir,
-        env: { ...process.env, PORT: "5096", JWT_SECRET: "super_secret_test_jwt_key_2026_nlc_secure_dashboard_fresh" },
+        env: {
+          ...process.env,
+          PORT: "5096",
+          JWT_SECRET: "super_secret_test_jwt_key_2026_nlc_secure_dashboard_fresh",
+          NODE_PATH: nodeModulesDir
+        },
         stdio: "ignore"
       });
 
