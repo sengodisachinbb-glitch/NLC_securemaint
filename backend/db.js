@@ -5,7 +5,8 @@ const path = require("path");
 const Database = require("better-sqlite3");
 
 // Connect to SQLite database file (created automatically if it doesn't exist)
-const dbPath = path.join(__dirname, "nlc.db");
+// Supports DB_PATH environment variable for isolated testing; defaults to backend/nlc.db
+const dbPath = process.env.DB_PATH ? path.resolve(process.env.DB_PATH) : path.join(__dirname, "nlc.db");
 const db = new Database(dbPath);
 
 // Enable foreign key enforcement and WAL mode for better concurrency and reliability

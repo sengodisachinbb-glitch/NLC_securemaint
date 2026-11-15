@@ -4,8 +4,28 @@
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const net = require("net");
 const { spawn, execSync } = require("child_process");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
+
+// Setup isolated temporary database environment for safe test execution
+const suiteTempDir = path.join(os.tmpdir(), "nlc_test_suite_" + Date.now());
+fs.mkdirSync(suiteTempDir, { recursive: true });
+const tempDbPath = path.join(suiteTempDir, "nlc.db");
+const tempAnchorPath = path.join(suiteTempDir, "anchor.json");
+
+// Copy exclusively from backend/demo-baseline/nlc.db (NEVER from backend/nlc.db)
+const baselineDbPath = path.resolve(__dirname, "../demo-baseline/nlc.db");
+if (!fs.existsSync(baselineDbPath)) {
+  throw new Error(`Demo baseline database not found at ${baselineDbPath}`);
+}
+fs.copyFileSync(baselineDbPath, tempDbPath);
+
+// Set environment variables BEFORE importing db/cron modules
+process.env.DB_PATH = tempDbPath;
+process.env.ANCHOR_PATH = tempAnchorPath;
+process.env.LOGIN_RATE_LIMIT_MAX = "100000";
+process.env.API_RATE_LIMIT_MAX = "100000";
 
 const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
@@ -13,13 +33,20 @@ const otplib = require("otplib");
 const db = require("../db");
 const { escalateOverdueOrders, runPmScheduler } = require("../cron");
 
-const BASE_URL = process.env.API_URL || "http://localhost:5000";
-const urlObj = new URL(BASE_URL);
-const PORT = urlObj.port || "5000";
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.listen(0, "127.0.0.1", () => {
+      const p = srv.address().port;
+      srv.close((err) => (err ? reject(err) : resolve(p)));
+    });
+  });
+}
 
-const BASE_URL_IPV6 = `http://localhost:${PORT}`;
-const BASE_URL_IPV4 = `http://127.0.0.1:${PORT}`;
-
+let PORT = null;
+let BASE_URL = null;
+let BASE_URL_IPV6 = null;
+let BASE_URL_IPV4 = null;
 let serverProcess = null;
 const resultsTable = [];
 
@@ -55,8 +82,9 @@ async function isServerHealthy(targetUrl = BASE_URL) {
 }
 
 // Logs in fresh at the start of each test (never reuses a token across tests)
-async function freshLogin(email, password = "NlcSecure@2026!", host = BASE_URL_IPV4) {
-  const loginRes = await fetch(`${host}/api/auth/login`, {
+async function freshLogin(email, password = "NlcSecure@2026!", host = null) {
+  const targetHost = host || BASE_URL;
+  const loginRes = await fetch(`${targetHost}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
@@ -74,7 +102,7 @@ async function freshLogin(email, password = "NlcSecure@2026!", host = BASE_URL_I
       throw new Error(`2FA required for ${email} but no totp_secret stored`);
     }
     const code = otplib.generateSync({ secret: user.totp_secret });
-    const verifyRes = await fetch(`${host}/api/auth/2fa/verify`, {
+    const verifyRes = await fetch(`${targetHost}/api/auth/2fa/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tempToken: loginData.tempToken, code })
@@ -102,36 +130,105 @@ async function freshLogin(email, password = "NlcSecure@2026!", host = BASE_URL_I
   throw new Error(`Fresh login failed for ${email}: ${loginRes.status} ${JSON.stringify(loginData)}`);
 }
 
+// Helper to seed genuine audit records via real API calls before tamper/gap tests
+async function generateGenuineAuditRows(targetUrl) {
+  // 1. Real logins across all 5 user roles (each logs LOGIN_SUCCESS)
+  const accounts = [
+    { email: "admin@nlc.in", pass: "NlcSecure@2026!" },
+    { email: "manager@nlc.in", pass: "NlcSecure@2026!" },
+    { email: "supervisor@nlc.in", pass: "NlcSecure@2026!" },
+    { email: "technician@nlc.in", pass: "NlcSecure@2026!" },
+    { email: "requester@nlc.in", pass: "NlcSecure@2026!" }
+  ];
+  for (const acct of accounts) {
+    await freshLogin(acct.email, acct.pass, targetUrl);
+  }
+
+  // 2. Real failed logins (each logs LOGIN_FAILED)
+  for (let i = 1; i <= 6; i++) {
+    await fetch(`${targetUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: `audit_gen_probe_${i}@nlc.in`, password: "WrongPassword999!" })
+    });
+  }
+
+  // 3. Real work orders created by requester (each logs WORK_ORDER_CREATE)
+  const reqToken = await freshLogin("requester@nlc.in", "NlcSecure@2026!", targetUrl);
+  for (let i = 1; i <= 3; i++) {
+    await fetch(`${targetUrl}/api/work-orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${reqToken}`
+      },
+      body: JSON.stringify({
+        title: `Audit Generation Order ${i}`,
+        description: `Synthetic real API work order for audit trail validation #${i}`,
+        equipment_id: 1,
+        priority: "Low",
+        type: "corrective"
+      })
+    });
+  }
+
+  // 4. Real actions created by manager (each logs ACTION_CREATED)
+  const mgrToken = await freshLogin("manager@nlc.in", "NlcSecure@2026!", targetUrl);
+  for (let i = 1; i <= 2; i++) {
+    await fetch(`${targetUrl}/api/actions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${mgrToken}`
+      },
+      body: JSON.stringify({
+        source: "CAG Report No. 35 of 2025",
+        description: `Audit Generation Action ${i}`,
+        owner_id: 4,
+        due_date: "2026-12-15",
+        evidence_note: `Generated via real API call ${i}`
+      })
+    });
+  }
+}
+
 describe("NLC-SecureMaint API Test Suite", () => {
   let createdActionId = null;
 
   before(async () => {
-    const healthy = await isServerHealthy(BASE_URL_IPV6);
-    if (!healthy) {
-      console.log(`[Test Runner] Server not responding on ${BASE_URL_IPV6}. Launching backend server...`);
-      serverProcess = spawn(process.execPath, [path.join(__dirname, "../index.js")], {
-        cwd: path.join(__dirname, ".."),
-        env: { ...process.env, PORT: String(PORT) },
-        stdio: "inherit"
-      });
+    PORT = await getFreePort();
+    BASE_URL = `http://127.0.0.1:${PORT}`;
+    BASE_URL_IPV6 = BASE_URL;
+    BASE_URL_IPV4 = BASE_URL;
 
-      let connected = false;
-      for (let i = 0; i < 40; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        if (await isServerHealthy(BASE_URL_IPV6)) {
-          connected = true;
-          break;
-        }
-      }
+    console.log(`[Test Runner] Launching isolated test server on ${BASE_URL}...`);
+    serverProcess = spawn(process.execPath, [path.join(__dirname, "../index.js")], {
+      cwd: path.join(__dirname, ".."),
+      env: {
+        ...process.env,
+        PORT: String(PORT),
+        DB_PATH: tempDbPath,
+        ANCHOR_PATH: tempAnchorPath,
+        LOGIN_RATE_LIMIT_MAX: "100000",
+        API_RATE_LIMIT_MAX: "100000"
+      },
+      stdio: "inherit"
+    });
 
-      if (!connected) {
-        if (serverProcess) serverProcess.kill();
-        throw new Error(`Unable to establish connection to ${BASE_URL_IPV6} within timeout.`);
+    let connected = false;
+    for (let i = 0; i < 50; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      if (await isServerHealthy(BASE_URL)) {
+        connected = true;
+        break;
       }
-      console.log(`[Test Runner] Connected to backend on ${BASE_URL_IPV6}`);
-    } else {
-      console.log(`[Test Runner] Connected to existing running backend server on ${BASE_URL_IPV6}`);
     }
+
+    if (!connected) {
+      if (serverProcess) serverProcess.kill();
+      throw new Error(`Unable to establish connection to ${BASE_URL} within timeout.`);
+    }
+    console.log(`[Test Runner] Connected to isolated test server on ${BASE_URL}`);
   });
 
   after(() => {
@@ -140,6 +237,18 @@ describe("NLC-SecureMaint API Test Suite", () => {
       serverProcess.kill();
       console.log("[Test Runner] Cleaned up temporary backend server instance.");
     }
+
+    // Close SQLite handle
+    try {
+      if (db && typeof db.close === "function") {
+        db.close();
+      }
+    } catch (e) {}
+
+    // Clean up temporary suite directory
+    try {
+      fs.rmSync(suiteTempDir, { recursive: true, force: true });
+    } catch (e) {}
 
     // Print final PASS/FAIL summary table
     console.log("\n==========================================================================================");
@@ -270,9 +379,12 @@ describe("NLC-SecureMaint API Test Suite", () => {
     let passed = false;
     let detail = "";
     try {
-      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      // Generate at least 15 genuine audit rows through real API calls before tamper and gap tests
+      await generateGenuineAuditRows(BASE_URL);
 
-      const res = await fetch(`${BASE_URL_IPV6}/api/audit/verify`, {
+      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL);
+
+      const res = await fetch(`${BASE_URL}/api/audit/verify`, {
         method: "GET",
         headers: { "Authorization": `Bearer ${adminToken}` }
       });
@@ -280,7 +392,7 @@ describe("NLC-SecureMaint API Test Suite", () => {
 
       assert.equal(res.status, 200, "Verification endpoint must return HTTP 200");
       assert.equal(data.valid, true, "Audit chain must report valid: true");
-      assert.ok(typeof data.count === "number" && data.count >= 0, "Must return entry count");
+      assert.ok(typeof data.count === "number" && data.count >= 15, `Must return entry count >= 15 (got ${data.count})`);
       assert.ok(data.anchor, "Must include separate anchor file validation");
 
       passed = true;
@@ -297,19 +409,21 @@ describe("NLC-SecureMaint API Test Suite", () => {
   test("5. Tampering with one audit row makes verify fail (restore it afterward)", async () => {
     let passed = false;
     let detail = "";
-    const dbFile = path.resolve(__dirname, "../nlc.db");
-    const anchorFile = path.resolve(__dirname, "../anchor.json");
     const tempBackupDir = path.join(os.tmpdir(), "nlc_audit_tamper_safe_" + Date.now());
     fs.mkdirSync(tempBackupDir, { recursive: true });
     const safeDbCopy = path.join(tempBackupDir, "nlc.db");
     const safeAnchorCopy = path.join(tempBackupDir, "anchor.json");
 
     try {
-      // Save temporary clean copy of database and anchor before tampering
-      fs.copyFileSync(dbFile, safeDbCopy);
-      if (fs.existsSync(anchorFile)) fs.copyFileSync(anchorFile, safeAnchorCopy);
+      // Save temporary clean copy of temporary database and anchor before tampering
+      fs.copyFileSync(tempDbPath, safeDbCopy);
+      if (fs.existsSync(tempAnchorPath)) fs.copyFileSync(tempAnchorPath, safeAnchorCopy);
 
-      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL);
+
+      const rowsBefore = db.prepare("SELECT * FROM audit_log ORDER BY id ASC").all();
+      assert.ok(rowsBefore.length >= 15, `Audit log must contain at least 15 rows before tamper test (got ${rowsBefore.length})`);
+
       const targetRow = db.prepare("SELECT id, action FROM audit_log ORDER BY id DESC LIMIT 1").get();
       assert.ok(targetRow, "Audit log must contain at least one row");
       const originalAction = targetRow.action;
@@ -317,7 +431,7 @@ describe("NLC-SecureMaint API Test Suite", () => {
       try {
         db.prepare("UPDATE audit_log SET action = ? WHERE id = ?").run("UNAUTHORIZED_TAMPER_TEST", targetRow.id);
 
-        const tamperRes = await fetch(`${BASE_URL_IPV6}/api/audit/verify`, {
+        const tamperRes = await fetch(`${BASE_URL}/api/audit/verify`, {
           method: "GET",
           headers: { "Authorization": `Bearer ${adminToken}` }
         });
@@ -332,7 +446,7 @@ describe("NLC-SecureMaint API Test Suite", () => {
         db.prepare("UPDATE audit_log SET action = ? WHERE id = ?").run(originalAction, targetRow.id);
       }
 
-      const restoreRes = await fetch(`${BASE_URL_IPV6}/api/audit/verify`, {
+      const restoreRes = await fetch(`${BASE_URL}/api/audit/verify`, {
         method: "GET",
         headers: { "Authorization": `Bearer ${adminToken}` }
       });
@@ -345,10 +459,10 @@ describe("NLC-SecureMaint API Test Suite", () => {
       detail = err.message;
       throw err;
     } finally {
-      // Always restore pristine demo database and anchor from temporary copy
+      // Always restore pristine temporary database and anchor from safe copy
       try {
-        if (fs.existsSync(safeDbCopy)) fs.copyFileSync(safeDbCopy, dbFile);
-        if (fs.existsSync(safeAnchorCopy)) fs.copyFileSync(safeAnchorCopy, anchorFile);
+        if (fs.existsSync(safeDbCopy)) fs.copyFileSync(safeDbCopy, tempDbPath);
+        if (fs.existsSync(safeAnchorCopy)) fs.copyFileSync(safeAnchorCopy, tempAnchorPath);
         fs.rmSync(tempBackupDir, { recursive: true, force: true });
       } catch (e) {}
       recordResult(5, "Audit Log (Tamper Detection & Recovery)", passed, detail);
@@ -359,24 +473,22 @@ describe("NLC-SecureMaint API Test Suite", () => {
   test("6. Audit verification detects row ID gaps and reports ID_GAP_DETECTED with position", async () => {
     let passed = false;
     let detail = "";
-    const dbFile = path.resolve(__dirname, "../nlc.db");
-    const anchorFile = path.resolve(__dirname, "../anchor.json");
     const tempBackupDir = path.join(os.tmpdir(), "nlc_audit_gap_safe_" + Date.now());
     fs.mkdirSync(tempBackupDir, { recursive: true });
     const safeDbCopy = path.join(tempBackupDir, "nlc.db");
     const safeAnchorCopy = path.join(tempBackupDir, "anchor.json");
 
     try {
-      // Save temporary clean copy of database and anchor before row deletion
-      fs.copyFileSync(dbFile, safeDbCopy);
-      if (fs.existsSync(anchorFile)) fs.copyFileSync(anchorFile, safeAnchorCopy);
+      // Save temporary clean copy of temporary database and anchor before row deletion
+      fs.copyFileSync(tempDbPath, safeDbCopy);
+      if (fs.existsSync(tempAnchorPath)) fs.copyFileSync(tempAnchorPath, safeAnchorCopy);
 
-      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL);
 
       const rows = db.prepare("SELECT * FROM audit_log ORDER BY id ASC").all();
-      assert.ok(rows.length >= 3, "Database must contain at least 3 audit rows");
+      assert.ok(rows.length >= 15, `Database must contain at least 15 audit rows before gap test (got ${rows.length})`);
 
-      const targetIndex = 1; // 2nd row
+      const targetIndex = 5; // An intermediate row (6th row in chain)
       const targetRow = rows[targetIndex];
       const prevRow = rows[targetIndex - 1];
       const nextRow = rows[targetIndex + 1];
@@ -385,7 +497,7 @@ describe("NLC-SecureMaint API Test Suite", () => {
         // Delete intermediate row directly in SQLite
         db.prepare("DELETE FROM audit_log WHERE id = ?").run(targetRow.id);
 
-        const gapRes = await fetch(`${BASE_URL_IPV6}/api/audit/verify`, {
+        const gapRes = await fetch(`${BASE_URL}/api/audit/verify`, {
           method: "GET",
           headers: { "Authorization": `Bearer ${adminToken}` }
         });
@@ -416,7 +528,7 @@ describe("NLC-SecureMaint API Test Suite", () => {
         );
       }
 
-      const restoreRes = await fetch(`${BASE_URL_IPV6}/api/audit/verify`, {
+      const restoreRes = await fetch(`${BASE_URL}/api/audit/verify`, {
         method: "GET",
         headers: { "Authorization": `Bearer ${adminToken}` }
       });
@@ -429,10 +541,10 @@ describe("NLC-SecureMaint API Test Suite", () => {
       detail = err.message;
       throw err;
     } finally {
-      // Always restore pristine demo database and anchor from temporary copy
+      // Always restore pristine temporary database and anchor from safe copy
       try {
-        if (fs.existsSync(safeDbCopy)) fs.copyFileSync(safeDbCopy, dbFile);
-        if (fs.existsSync(safeAnchorCopy)) fs.copyFileSync(safeAnchorCopy, anchorFile);
+        if (fs.existsSync(safeDbCopy)) fs.copyFileSync(safeDbCopy, tempDbPath);
+        if (fs.existsSync(safeAnchorCopy)) fs.copyFileSync(safeAnchorCopy, tempAnchorPath);
         fs.rmSync(tempBackupDir, { recursive: true, force: true });
       } catch (e) {}
       recordResult(6, "Audit Log (Row ID Continuity & ID_GAP_DETECTED)", passed, detail);
@@ -643,26 +755,30 @@ describe("NLC-SecureMaint API Test Suite", () => {
         }
       }
 
+      const dashPort = await getFreePort();
       fs.writeFileSync(
         path.join(tempDir, ".env"),
-        "PORT=5096\nJWT_SECRET=super_secret_test_jwt_key_2026_nlc_secure_dashboard_fresh\nDEMO_MODE=true\n",
+        `PORT=${dashPort}\nJWT_SECRET=super_secret_test_jwt_key_2026_nlc_secure_dashboard_fresh\nDEMO_MODE=true\n`,
         "utf8"
       );
 
       const nodeModulesDir = path.join(rootBackend, "node_modules");
+      const test11Env = { ...process.env, NODE_PATH: nodeModulesDir };
+      delete test11Env.DB_PATH;
+      delete test11Env.ANCHOR_PATH;
+
       execSync("npm run seed", {
         cwd: tempDir,
-        env: { ...process.env, NODE_PATH: nodeModulesDir },
+        env: test11Env,
         stdio: "ignore"
       });
 
       tempProc = spawn(process.execPath, ["index.js"], {
         cwd: tempDir,
         env: {
-          ...process.env,
-          PORT: "5096",
-          JWT_SECRET: "super_secret_test_jwt_key_2026_nlc_secure_dashboard_fresh",
-          NODE_PATH: nodeModulesDir
+          ...test11Env,
+          PORT: String(dashPort),
+          JWT_SECRET: "super_secret_test_jwt_key_2026_nlc_secure_dashboard_fresh"
         },
         stdio: "ignore"
       });
@@ -671,14 +787,14 @@ describe("NLC-SecureMaint API Test Suite", () => {
       for (let i = 0; i < 40; i++) {
         await new Promise((r) => setTimeout(r, 200));
         try {
-          const r = await fetch("http://localhost:5096/api/health", { signal: AbortSignal.timeout(500) });
+          const r = await fetch(`http://127.0.0.1:${dashPort}/api/health`, { signal: AbortSignal.timeout(500) });
           if (r.ok) { ready = true; break; }
         } catch (e) {}
       }
 
-      assert.ok(ready, "Temporary server must start successfully on port 5096");
+      assert.ok(ready, `Temporary server must start successfully on port ${dashPort}`);
 
-      const loginRes = await fetch("http://localhost:5096/api/auth/login", {
+      const loginRes = await fetch(`http://127.0.0.1:${dashPort}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: "admin@nlc.in", password: "NlcSecure@2026!" })
@@ -686,7 +802,7 @@ describe("NLC-SecureMaint API Test Suite", () => {
       const loginData = await loginRes.json();
       assert.ok(loginData.token, "Login on fresh database must succeed");
 
-      const dashRes = await fetch("http://localhost:5096/api/dashboard/stats", {
+      const dashRes = await fetch(`http://127.0.0.1:${dashPort}/api/dashboard/stats`, {
         headers: { "Authorization": `Bearer ${loginData.token}` }
       });
       assert.equal(dashRes.status, 200, "Dashboard stats must return HTTP 200");
@@ -847,16 +963,30 @@ describe("NLC-SecureMaint API Test Suite", () => {
     }
   });
 
-  // TEST 14: Rate limiting on rapid logins (isolated instance on port 5094)
+  // TEST 14: Rate limiting on rapid logins (isolated instance with default limits)
   test("14. 11 rapid logins return 429", async () => {
     let passed = false;
     let detail = "";
     let rateProc = null;
 
     try {
+      const ratePort = await getFreePort();
+      const rateUrl = `http://127.0.0.1:${ratePort}`;
+
+      // Start backend with default rate limits (delete suite's elevated rate limits)
+      const rateEnv = { ...process.env };
+      delete rateEnv.LOGIN_RATE_LIMIT_MAX;
+      delete rateEnv.API_RATE_LIMIT_MAX;
+
       rateProc = spawn(process.execPath, [path.join(__dirname, "../index.js")], {
         cwd: path.join(__dirname, ".."),
-        env: { ...process.env, PORT: "5094", JWT_SECRET: "test_jwt_secret_rate_limit_key_2026" },
+        env: {
+          ...rateEnv,
+          PORT: String(ratePort),
+          JWT_SECRET: "test_jwt_secret_rate_limit_key_2026",
+          DB_PATH: tempDbPath,
+          ANCHOR_PATH: tempAnchorPath
+        },
         stdio: "ignore"
       });
 
@@ -864,16 +994,16 @@ describe("NLC-SecureMaint API Test Suite", () => {
       for (let i = 0; i < 40; i++) {
         await new Promise((r) => setTimeout(r, 100));
         try {
-          const r = await fetch("http://localhost:5094/api/health", { signal: AbortSignal.timeout(500) });
+          const r = await fetch(`${rateUrl}/api/health`, { signal: AbortSignal.timeout(500) });
           if (r.ok) { ready = true; break; }
         } catch (e) {}
       }
 
-      assert.ok(ready, "Rate limit test server must be ready on port 5094");
+      assert.ok(ready, `Rate limit test server must be ready on ${rateUrl}`);
 
       const statuses = [];
       for (let i = 1; i <= 11; i++) {
-        const res = await fetch("http://localhost:5094/api/auth/login", {
+        const res = await fetch(`${rateUrl}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

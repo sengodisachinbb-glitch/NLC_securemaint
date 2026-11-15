@@ -7,7 +7,8 @@ const path = require("path");
 const crypto = require("crypto");
 const db = require("./db");
 
-const anchorFilePath = path.join(__dirname, "anchor.json");
+// Supports ANCHOR_PATH environment variable for isolated testing; defaults to backend/anchor.json
+const anchorFilePath = process.env.ANCHOR_PATH ? path.resolve(process.env.ANCHOR_PATH) : path.join(__dirname, "anchor.json");
 
 /**
  * Saves the latest audit row ID and SHA-256 hash to the separate anchor file (backend/anchor.json).
