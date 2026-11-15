@@ -126,11 +126,11 @@ Every dummy account is pre-configured with the default password: **`NlcSecure@20
 
 | Role | Name | Email | Default Password | Primary Responsibilities |
 | :--- | :--- | :--- | :--- | :--- |
-| **Admin** | Rajesh Kumar | `admin@nlc.in` | `NlcSecure@2026!` | System configuration, Equipment Register management, and Audit Log chain verification. |
-| **Manager** | Ananya Sharma | `manager@nlc.in` | `NlcSecure@2026!` | Dashboard analytics, Work Orders technician & SLA assignment, Preventive Maintenance Scheduler creation, Action Tracker closure verification. |
-| **Supervisor** | Suresh Murugan | `supervisor@nlc.in` | `NlcSecure@2026!` | Work Orders technical review, approval, and rejection. Ownership of mechanical Action Tracker items. |
-| **Technician** | Karthik Selvan | `technician@nlc.in` | `NlcSecure@2026!` | On-site execution: starting Work Orders, recording evidence, and completing maintenance. |
-| **Requester** | Pooja Nair | `requester@nlc.in` | `NlcSecure@2026!` | Plant operator submitting breakdown Work Orders, post-repair inspection, verification, and closure. |
+| **Admin** | Rajesh Kumar | `admin@nlc.in` | `NlcSecure@2026!` | System configuration, Equipment Register management, and Audit Log chain verification. Read-only access to work orders and actions; excluded from workflow sign-offs. |
+| **Manager** | Ananya Sharma | `manager@nlc.in` | `NlcSecure@2026!` | Dashboard analytics, Work Orders technician & SLA assignment, Preventive Maintenance Scheduler creation, Action Tracker closure verification (cannot verify self-owned actions). |
+| **Supervisor** | Suresh Murugan | `supervisor@nlc.in` | `NlcSecure@2026!` | Work Orders technical review, approval, and rejection (cannot approve or reject self-raised orders). Ownership of mechanical Action Tracker items. |
+| **Technician** | Karthik Selvan | `technician@nlc.in` | `NlcSecure@2026!` | On-site execution: starting assigned Work Orders, recording evidence, and completing maintenance. Action progress updates on owned items. |
+| **Requester** | Pooja Nair | `requester@nlc.in` | `NlcSecure@2026!` | Plant operator submitting breakdown Work Orders, post-repair inspection, verification, and closure/reopening. |
 
 ---
 
@@ -273,6 +273,7 @@ This structured walkthrough demonstrates all requirements of the internship proj
 - **Injection Prevention**: all reviewed queries use prepared statements (`db.prepare('...').run(?)`).
 - **CORS & Headers**: Strict origin whitelisting (`http://localhost:3000`) and Helmet HTTP security response headers.
 - **Audit Log & Separate Anchor File**: SHA-256 blockchain-style hash chain on all database events, backed by a separate filesystem anchor file (`backend/anchor.json`) to detect tail rewrites and truncation attacks (deleted rows).
+- **Segregation of Duties & Least Privilege**: Enforces that nobody signs off their own work: users cannot approve or reject work orders they raised themselves; action item progress updates are restricted strictly to assigned owners (Admin cannot override); action verification is restricted to Managers and verifiers cannot be the action's owner; Admin is excluded from operational lifecycle workflow actions (approve, assign, start, complete, close, reopen, action verify) to preserve audit neutrality.
 
 ---
 

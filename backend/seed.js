@@ -3,6 +3,7 @@
 
 const bcrypt = require("bcrypt");
 const db = require("./db");
+const { logAudit } = require("./audit");
 const { validatePasswordPolicy } = require("./utils/passwordPolicy");
 
 console.log("[Seed] Starting database seeding...");
@@ -268,6 +269,33 @@ const seedDatabase = db.transaction(() => {
         null
       );
     }
+  }
+
+  // 5. Sample initial work order
+  const woCount = db.prepare("SELECT COUNT(*) as count FROM work_orders").get().count;
+  if (woCount === 0) {
+    const eq = db.prepare("SELECT id FROM equipment WHERE code = ?").get("CVY-01");
+    const reqUser = db.prepare("SELECT id FROM users WHERE email = ?").get("requester@nlc.in");
+    if (eq && reqUser) {
+      db.prepare(`
+        INSERT INTO work_orders (title, description, equipment_id, requester_id, priority, status, type)
+        VALUES (?, ?, ?, ?, 'Medium', 'Submitted', 'corrective')
+      `).run(
+        "Conveyor belt idler roller vibration check",
+        "Inspect drive pulley bearing temperature and roller alignment",
+        eq.id,
+        reqUser.id
+      );
+    }
+  }
+
+  // 6. Initial audit ledger entries to establish cryptographic chain and anchor together
+  const auditCount = db.prepare("SELECT COUNT(*) as count FROM audit_log").get().count;
+  if (auditCount === 0) {
+    logAudit(1, "SYSTEM_INITIALIZED", "system", { message: "Database initialized with clean schema and seed data" });
+    logAudit(1, "EQUIPMENT_REGISTER_SEEDED", "equipment", { count: equipment.length });
+    logAudit(1, "PM_SCHEDULES_SEEDED", "pm_schedules", { count: 2 });
+    logAudit(1, "COMPLIANCE_ACTIONS_SEEDED", "actions", { count: 2 });
   }
 });
 

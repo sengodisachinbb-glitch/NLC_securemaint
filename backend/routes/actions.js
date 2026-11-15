@@ -180,8 +180,8 @@ router.patch(
         return res.status(404).json({ error: `Action item with ID ${req.params.id} not found.` });
       }
 
-      // Security Check: Only the assigned owner (or Admin) can update progress
-      if (req.user.role !== "Admin" && req.user.id !== action.owner_id) {
+      // Security Check: Only the assigned owner can update progress (Admin not allowed unless owner)
+      if (req.user.id !== action.owner_id) {
         return res.status(403).json({
           error: `Forbidden: Only the assigned action owner (${action.owner_name}) can update progress on this item.`
         });
@@ -230,12 +230,19 @@ router.patch(
 router.patch(
   "/:id/verify",
   authenticate,
-  authorize("Manager", "Admin"),
+  authorize("Manager"),
   (req, res) => {
     try {
       const action = getActionById(req.params.id);
       if (!action) {
         return res.status(404).json({ error: `Action item with ID ${req.params.id} not found.` });
+      }
+
+      // Segregation of duties: Verifier cannot be the action's assigned owner
+      if (action.owner_id === req.user.id) {
+        return res.status(403).json({
+          error: "Forbidden: You cannot verify closure of an action item you own (segregation of duties enforced)."
+        });
       }
 
       const verifiedStatus = "Verified";

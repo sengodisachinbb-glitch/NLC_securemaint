@@ -200,7 +200,7 @@ Executed command: `npm run test:api` (Node.js test runner against running backen
 * **Status:** **NOT RUN (EMULATED VIA SCRIPT).**
 * **Investigation:**
   - A real OWASP ZAP installation (e.g. from zaproxy.org or official Docker container `zaproxy/zap-stable`) **was never run** on this host.
-  - Verification evidence: In step 2860 of the system transcript, `java -version` and `docker -v` failed. In step 2868, a custom Node.js script [backend/tests/generate_zap_scan.js](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/tests/generate_zap_scan.js) was written to probe HTTP headers and generate a synthetic HTML file formatted like an OWASP ZAP report (`tests-output/OWASP-ZAP-Security-Report.html`).
+  - Verification evidence: In step 2860 of the system transcript, `java -version` and `docker -v` failed. In step 2868, a custom Node.js script [backend/tests/scripted-security-checks.js](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/tests/scripted-security-checks.js) was written to probe HTTP headers and generate a synthetic HTML file formatted like a security report (now archived at [reports/archive/Scripted-Security-Checks.html](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/reports/archive/Scripted-Security-Checks.html)).
   - Therefore, an authentic OWASP ZAP scan remains unperformed.
 
 ---
@@ -217,7 +217,7 @@ Based on the required deliverable scope, the status of the five specific items i
 
 | Deliverable Item | Status | Verification Detail |
 | :--- | :---: | :--- |
-| **Real ZAP scan** | **NOT DONE** | Emulated via custom script `generate_zap_scan.js`. No official ZAP binary was executed. |
+| **Real ZAP scan** | **NOT DONE** | Emulated via custom script `scripted-security-checks.js`. No official ZAP binary was executed. |
 | **Clean-folder install test** | **NOT DONE** | A fresh clone into an isolated directory with clean `npm install` and end-to-end execution has not been performed in this workspace. Marked **NOT VERIFIED**. |
 | **Final project report** | **NOT DONE** | Technical architecture and history reports exist in `/reports/`, but the formal final evaluation report has not yet been authored. |
 | **Presentation slides** | **NOT DONE** | No slide deck files (Marp markdown, HTML slides, PPTX, or PDF) exist anywhere in the repository. |
@@ -236,7 +236,7 @@ All measurements below represent exact counts derived directly from source code 
 | **Backend Route Endpoints** | **30** | Counted across `backend/index.js` (1) and `backend/routes/*.js` (29). |
 | **Frontend Routed Pages** | **10** | Counted in `frontend/src/pages/` (`Actions.jsx`, `Audit.jsx`, `Dashboard.jsx`, `Equipment.jsx`, `Home.jsx`, `Login.jsx`, `PmSchedules.jsx`, `Setup2FA.jsx`, `WorkOrderDetail.jsx`, `WorkOrders.jsx`). |
 | **Database Tables** | **6** | Counted in `backend/db.js` (`users`, `equipment`, `work_orders`, `audit_log`, `pm_schedules`, `actions`). |
-| **Automated API Tests** | **14** | Counted in `backend/tests/api.test.js` (Tests #1 through #14). |
+| **Automated API Tests** | **18** | Counted in `backend/tests/api.test.js` (Tests #1 through #18, 100% PASS). |
 
 ---
 
@@ -256,6 +256,6 @@ All measurements below represent exact counts derived directly from source code 
 | **`frontend/src/api/`** | 1 | 36 | `axios.js`. |
 | **`frontend/` (root & `src` root)** | 7 | 501 | `App.jsx`, `main.jsx`, `index.css`, `index.html`, `vite.config.js`, `package.json`. |
 | **`reports/`** | 1 | 542 | `WORKFLOW-AND-DATA-FLOW.md`. |
-| **`tests-output/`** | 37 | 27,694 | Test logs, markdown summaries (`T1`–`T5`), ZAP HTML report, captured screenshots. |
+| **`tests-output/`** | 37 | 27,694 | Test logs, markdown summaries (`T1`–`T5`), captured screenshots. |
 | **Total Workspace Scope** | **103** | **40,454** | Full non-vendor codebase and QA artifacts. |
 

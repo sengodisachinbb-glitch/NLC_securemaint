@@ -30,7 +30,7 @@ export const Actions = () => {
   });
 
   const canCreate = user?.role === "Admin" || user?.role === "Manager";
-  const canVerify = user?.role === "Manager" || user?.role === "Admin";
+  const isManager = user?.role === "Manager";
 
   const fetchActions = async () => {
     try {
@@ -179,7 +179,8 @@ export const Actions = () => {
             </thead>
             <tbody>
               {actionsList.map((item) => {
-                const isOwner = user?.id === item.owner_id || user?.role === "Admin";
+                const isOwner = user?.id === item.owner_id;
+                const isOwnerManager = isManager && user?.id === item.owner_id;
                 return (
                   <tr key={item.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                     <td style={{ padding: "12px 16px", fontWeight: "600" }}>#{item.id}</td>
@@ -231,7 +232,7 @@ export const Actions = () => {
                       {item.evidence_note || "None recorded"}
                     </td>
                     <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+                      <div style={{ display: "flex", gap: "6px", justifyContent: "center", alignItems: "center" }}>
                         {/* Owner update button */}
                         {isOwner && item.status !== "Verified" && (
                           <button
@@ -252,22 +253,46 @@ export const Actions = () => {
                         )}
 
                         {/* Manager verify button */}
-                        {canVerify && item.status !== "Verified" && (
-                          <button
-                            onClick={() => handleVerify(item.id)}
-                            style={{
-                              backgroundColor: "#16a34a",
-                              color: "#fff",
-                              border: 0,
-                              borderRadius: "4px",
-                              padding: "4px 8px",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                              cursor: "pointer"
-                            }}
-                          >
-                            Verify
-                          </button>
+                        {isManager && item.status !== "Verified" && (
+                          isOwnerManager ? (
+                            <span
+                              title="Blocked: You cannot verify closure of an action item you own (segregation of duties)."
+                              style={{
+                                fontSize: "0.7rem",
+                                color: "#991b1b",
+                                backgroundColor: "#fee2e2",
+                                padding: "3px 6px",
+                                borderRadius: "4px",
+                                fontWeight: "600",
+                                border: "1px solid #fca5a5"
+                              }}
+                            >
+                              Owner (Cannot Verify)
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleVerify(item.id)}
+                              style={{
+                                backgroundColor: "#16a34a",
+                                color: "#fff",
+                                border: 0,
+                                borderRadius: "4px",
+                                padding: "4px 8px",
+                                fontSize: "0.75rem",
+                                fontWeight: "600",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Verify
+                            </button>
+                          )
+                        )}
+
+                        {item.status === "Verified" && (
+                          <span style={{ fontSize: "0.75rem", color: "#16a34a", fontWeight: "600" }}>✓ Verified</span>
+                        )}
+                        {!isOwner && !isManager && item.status !== "Verified" && (
+                          <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Read Only</span>
                         )}
                       </div>
                     </td>

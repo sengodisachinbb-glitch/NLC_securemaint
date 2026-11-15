@@ -1,0 +1,203 @@
+{
+  "2a": {
+    "test": "Login error message uniformity (account enumeration defense)",
+    "wrongPassword": {
+      "status": 401,
+      "body": {
+        "error": "Invalid email or password."
+      }
+    },
+    "unknownEmail": {
+      "status": 401,
+      "body": {
+        "error": "Invalid email or password."
+      }
+    },
+    "passed": true
+  },
+  "2b": {
+    "test": "5 consecutive failed logins trigger 15-minute account lockout",
+    "attempts": [
+      {
+        "attempt": 1,
+        "status": 401,
+        "body": {
+          "error": "Invalid email or password."
+        }
+      },
+      {
+        "attempt": 2,
+        "status": 401,
+        "body": {
+          "error": "Invalid email or password."
+        }
+      },
+      {
+        "attempt": 3,
+        "status": 401,
+        "body": {
+          "error": "Invalid email or password."
+        }
+      },
+      {
+        "attempt": 4,
+        "status": 401,
+        "body": {
+          "error": "Invalid email or password."
+        }
+      },
+      {
+        "attempt": 5,
+        "status": 403,
+        "body": {
+          "error": "Account locked for 15 minutes due to 5 consecutive failed login attempts.",
+          "locked_until": "2026-11-15T07:54:24.975Z"
+        }
+      }
+    ],
+    "fifthAttemptStatus": 403,
+    "fifthAttemptBody": {
+      "error": "Account locked for 15 minutes due to 5 consecutive failed login attempts.",
+      "locked_until": "2026-11-15T07:54:24.975Z"
+    },
+    "dbLockedUntil": "2026-11-15T07:54:24.975Z",
+    "passed": true
+  },
+  "2c": {
+    "test": "Admin forbidden (403) from work order lifecycle actions",
+    "approve": {
+      "status": 403,
+      "body": {
+        "error": "Forbidden: role 'Admin' does not have permission to access this resource."
+      }
+    },
+    "assign": {
+      "status": 403,
+      "body": {
+        "error": "Forbidden: role 'Admin' does not have permission to access this resource."
+      }
+    },
+    "start": {
+      "status": 403,
+      "body": {
+        "error": "Forbidden: role 'Admin' does not have permission to access this resource."
+      }
+    },
+    "complete": {
+      "status": 403,
+      "body": {
+        "error": "Forbidden: role 'Admin' does not have permission to access this resource."
+      }
+    },
+    "close": {
+      "status": 403,
+      "body": {
+        "error": "Forbidden: role 'Admin' does not have permission to access this resource."
+      }
+    },
+    "passed": true
+  },
+  "2d": {
+    "test": "Segregation of duties: self-approval of work orders blocked",
+    "createStatus": 201,
+    "createdOrderId": 39,
+    "selfApproveStatus": 403,
+    "selfApproveBody": {
+      "error": "Forbidden: You cannot approve a work order that you raised yourself (segregation of duties enforced)."
+    },
+    "passed": true
+  },
+  "2e": {
+    "test": "Technician role restrictions on equipment creation and dashboard stats",
+    "equipmentPost": {
+      "status": 403,
+      "body": {
+        "error": "Forbidden: role 'Technician' does not have permission to access this resource."
+      }
+    },
+    "dashboardGet": {
+      "status": 403,
+      "body": {
+        "error": "Forbidden: role 'Technician' does not have permission to access this resource."
+      }
+    },
+    "passed": true
+  },
+  "2f": {
+    "test": "Full work-order lifecycle transitions and 1:1 audit trail recording",
+    "workOrderId": 40,
+    "transitions": [
+      {
+        "step": "1. Create",
+        "status": 201,
+        "resultingStatus": "Submitted"
+      },
+      {
+        "step": "2. Approve",
+        "status": 200,
+        "resultingStatus": "Approved"
+      },
+      {
+        "step": "3. Assign",
+        "status": 200,
+        "resultingStatus": "Assigned"
+      },
+      {
+        "step": "4. Start",
+        "status": 200,
+        "resultingStatus": "In Progress"
+      },
+      {
+        "step": "5. Complete",
+        "status": 200,
+        "resultingStatus": "Completed"
+      },
+      {
+        "step": "6. Close",
+        "status": 200,
+        "resultingStatus": "Closed"
+      }
+    ],
+    "auditRowCount": 6,
+    "auditActions": [
+      "WORK_ORDER_CREATE",
+      "WORK_ORDER_APPROVED",
+      "WORK_ORDER_ASSIGNED",
+      "WORK_ORDER_STARTED",
+      "WORK_ORDER_COMPLETED",
+      "WORK_ORDER_VERIFIED_CLOSED"
+    ],
+    "passed": true
+  },
+  "2g": {
+    "test": "Running-hours preventive trigger & per-schedule duplicate suppression",
+    "scheduleId": 9,
+    "ordersBeforeThresholdCount": 0,
+    "ordersAfterThresholdCount": 1,
+    "ordersAfterDetails": {
+      "id": 41,
+      "status": "Submitted",
+      "type": "preventive",
+      "pm_schedule_id": 9
+    },
+    "ordersAfterSecondCronCount": 1,
+    "passed": true
+  },
+  "2h": {
+    "test": "Cryptographic audit chain verification against separate anchor file",
+    "status": 200,
+    "body": {
+      "valid": true,
+      "count": 312,
+      "lastRowId": 312,
+      "lastHash": "6b5eda9b347c5c6b2057c64a0c9749af4d2293a8c64c6019d87a6a0c9eec9c25",
+      "anchor": {
+        "row_id": 312,
+        "hash": "6b5eda9b347c5c6b2057c64a0c9749af4d2293a8c64c6019d87a6a0c9eec9c25",
+        "timestamp": "2026-11-15T07:39:25.419Z"
+      },
+      "message": "Audit log chain and separate anchor file integrity verified. All 312 entries are valid and match separate anchor file (Row #312)."
+    },
+    "passed": true
+  }
+}

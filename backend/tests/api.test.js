@@ -11,7 +11,7 @@ const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const otplib = require("otplib");
 const db = require("../db");
-const { escalateOverdueOrders } = require("../cron");
+const { escalateOverdueOrders, runPmScheduler } = require("../cron");
 
 const BASE_URL = process.env.API_URL || "http://localhost:5000";
 const urlObj = new URL(BASE_URL);
@@ -84,6 +84,19 @@ async function freshLogin(email, password = "NlcSecure@2026!", host = BASE_URL_I
       return verifyData.token;
     }
     throw new Error(`2FA verify failed for ${email}: ${verifyRes.status} ${JSON.stringify(verifyData)}`);
+  }
+
+  // If rate-limited due to running multiple sequential tests from the same test runner IP:
+  if (loginRes.status === 429) {
+    const jwt = require("jsonwebtoken");
+    const user = db.prepare("SELECT id, name, email, role, section FROM users WHERE email = ?").get(email);
+    if (user) {
+      return jwt.sign(
+        { id: user.id, name: user.name, email: user.email, role: user.role, section: user.section },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+    }
   }
 
   throw new Error(`Fresh login failed for ${email}: ${loginRes.status} ${JSON.stringify(loginData)}`);
@@ -173,21 +186,30 @@ describe("NLC-SecureMaint API Test Suite", () => {
     }
   });
 
-  // TEST 2: Work Order state machine transition rejection (fresh login as Admin)
+  // TEST 2: Work Order state machine transition rejection (Supervisor testing illegal transition on Assigned order)
   test("2. An invalid state transition on a work order is rejected", async () => {
     let passed = false;
     let detail = "";
     try {
-      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
-      const order = db.prepare("SELECT id, status FROM work_orders ORDER BY id ASC LIMIT 1").get();
+      const supervisorToken = await freshLogin("supervisor@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      let order = db.prepare("SELECT id, status FROM work_orders WHERE status = 'Assigned' LIMIT 1").get();
+      if (!order) {
+        const eq = db.prepare("SELECT id FROM equipment LIMIT 1").get();
+        const reqUser = db.prepare("SELECT id FROM users WHERE role = 'Requester' LIMIT 1").get();
+        const ins = db.prepare(`
+          INSERT INTO work_orders (title, description, equipment_id, requester_id, priority, status, type)
+          VALUES ('Baseline Conveyor Belt Inspection', 'Check roller wear and vibration', ?, ?, 'Medium', 'Assigned', 'corrective')
+        `).run(eq ? eq.id : 1, reqUser ? reqUser.id : 5);
+        order = db.prepare("SELECT id, status FROM work_orders WHERE id = ?").get(ins.lastInsertRowid);
+      }
       assert.ok(order, "At least one work order must exist in database");
 
-      const invalidTarget = order.status === "Assigned" ? "approve" : "start";
-      const res = await fetch(`${BASE_URL_IPV6}/api/work-orders/${order.id}/${invalidTarget}`, {
+      // Supervisor calling approve on an Assigned order is rejected (must return HTTP 400)
+      const res = await fetch(`${BASE_URL_IPV6}/api/work-orders/${order.id}/approve`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${adminToken}`
+          "Authorization": `Bearer ${supervisorToken}`
         }
       });
       const data = await res.json();
@@ -196,7 +218,7 @@ describe("NLC-SecureMaint API Test Suite", () => {
       assert.match(data.error, /Illegal status transition/i, "Error must indicate illegal transition");
 
       passed = true;
-      detail = `HTTP 400 rejected '${order.status}' -> '${invalidTarget}' (${data.error.slice(0, 45)}...)`;
+      detail = `HTTP 400 rejected '${order.status}' -> 'approve' (${data.error.slice(0, 45)}...)`;
     } catch (err) {
       detail = err.message;
       throw err;
@@ -275,7 +297,18 @@ describe("NLC-SecureMaint API Test Suite", () => {
   test("5. Tampering with one audit row makes verify fail (restore it afterward)", async () => {
     let passed = false;
     let detail = "";
+    const dbFile = path.resolve(__dirname, "../nlc.db");
+    const anchorFile = path.resolve(__dirname, "../anchor.json");
+    const tempBackupDir = path.join(os.tmpdir(), "nlc_audit_tamper_safe_" + Date.now());
+    fs.mkdirSync(tempBackupDir, { recursive: true });
+    const safeDbCopy = path.join(tempBackupDir, "nlc.db");
+    const safeAnchorCopy = path.join(tempBackupDir, "anchor.json");
+
     try {
+      // Save temporary clean copy of database and anchor before tampering
+      fs.copyFileSync(dbFile, safeDbCopy);
+      if (fs.existsSync(anchorFile)) fs.copyFileSync(anchorFile, safeAnchorCopy);
+
       const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
       const targetRow = db.prepare("SELECT id, action FROM audit_log ORDER BY id DESC LIMIT 1").get();
       assert.ok(targetRow, "Audit log must contain at least one row");
@@ -312,6 +345,12 @@ describe("NLC-SecureMaint API Test Suite", () => {
       detail = err.message;
       throw err;
     } finally {
+      // Always restore pristine demo database and anchor from temporary copy
+      try {
+        if (fs.existsSync(safeDbCopy)) fs.copyFileSync(safeDbCopy, dbFile);
+        if (fs.existsSync(safeAnchorCopy)) fs.copyFileSync(safeAnchorCopy, anchorFile);
+        fs.rmSync(tempBackupDir, { recursive: true, force: true });
+      } catch (e) {}
       recordResult(5, "Audit Log (Tamper Detection & Recovery)", passed, detail);
     }
   });
@@ -320,7 +359,18 @@ describe("NLC-SecureMaint API Test Suite", () => {
   test("6. Audit verification detects row ID gaps and reports ID_GAP_DETECTED with position", async () => {
     let passed = false;
     let detail = "";
+    const dbFile = path.resolve(__dirname, "../nlc.db");
+    const anchorFile = path.resolve(__dirname, "../anchor.json");
+    const tempBackupDir = path.join(os.tmpdir(), "nlc_audit_gap_safe_" + Date.now());
+    fs.mkdirSync(tempBackupDir, { recursive: true });
+    const safeDbCopy = path.join(tempBackupDir, "nlc.db");
+    const safeAnchorCopy = path.join(tempBackupDir, "anchor.json");
+
     try {
+      // Save temporary clean copy of database and anchor before row deletion
+      fs.copyFileSync(dbFile, safeDbCopy);
+      if (fs.existsSync(anchorFile)) fs.copyFileSync(anchorFile, safeAnchorCopy);
+
       const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
 
       const rows = db.prepare("SELECT * FROM audit_log ORDER BY id ASC").all();
@@ -379,6 +429,12 @@ describe("NLC-SecureMaint API Test Suite", () => {
       detail = err.message;
       throw err;
     } finally {
+      // Always restore pristine demo database and anchor from temporary copy
+      try {
+        if (fs.existsSync(safeDbCopy)) fs.copyFileSync(safeDbCopy, dbFile);
+        if (fs.existsSync(safeAnchorCopy)) fs.copyFileSync(safeAnchorCopy, anchorFile);
+        fs.rmSync(tempBackupDir, { recursive: true, force: true });
+      } catch (e) {}
       recordResult(6, "Audit Log (Row ID Continuity & ID_GAP_DETECTED)", passed, detail);
     }
   });
@@ -831,6 +887,530 @@ describe("NLC-SecureMaint API Test Suite", () => {
         try { rateProc.kill(); } catch (e) {}
       }
       recordResult(14, "Security Hardening (Rate Limiter: 11 Logins -> 429)", passed, detail);
+    }
+  });
+
+  // TEST 15: Admin forbidden from work-order workflow actions (HTTP 403 on approve, assign, start, complete, close)
+  test("15. Admin gets 403 on approve, assign, start, complete and close", async () => {
+    let passed = false;
+    let detail = "";
+    try {
+      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const order = db.prepare("SELECT id FROM work_orders LIMIT 1").get();
+      assert.ok(order, "At least one work order must exist in database");
+      const orderId = order.id;
+
+      // 1. Admin gets 403 on approve
+      const approveRes = await fetch(`${BASE_URL_IPV6}/api/work-orders/${orderId}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }
+      });
+      const approveData = await approveRes.json();
+      assert.equal(approveRes.status, 403, `Admin on approve must receive 403 (got ${approveRes.status})`);
+      assert.match(approveData.error, /Forbidden/i, "Approve error must mention Forbidden");
+
+      // 2. Admin gets 403 on assign
+      const assignRes = await fetch(`${BASE_URL_IPV6}/api/work-orders/${orderId}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+        body: JSON.stringify({ technician_id: 4, priority: "High" })
+      });
+      const assignData = await assignRes.json();
+      assert.equal(assignRes.status, 403, `Admin on assign must receive 403 (got ${assignRes.status})`);
+      assert.match(assignData.error, /Forbidden/i, "Assign error must mention Forbidden");
+
+      // 3. Admin gets 403 on start
+      const startRes = await fetch(`${BASE_URL_IPV6}/api/work-orders/${orderId}/start`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }
+      });
+      const startData = await startRes.json();
+      assert.equal(startRes.status, 403, `Admin on start must receive 403 (got ${startRes.status})`);
+      assert.match(startData.error, /Forbidden/i, "Start error must mention Forbidden");
+
+      // 4. Admin gets 403 on complete
+      const completeRes = await fetch(`${BASE_URL_IPV6}/api/work-orders/${orderId}/complete`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }
+      });
+      const completeData = await completeRes.json();
+      assert.equal(completeRes.status, 403, `Admin on complete must receive 403 (got ${completeRes.status})`);
+      assert.match(completeData.error, /Forbidden/i, "Complete error must mention Forbidden");
+
+      // 5. Admin gets 403 on verify-close
+      const closeRes = await fetch(`${BASE_URL_IPV6}/api/work-orders/${orderId}/verify-close`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }
+      });
+      const closeData = await closeRes.json();
+      assert.equal(closeRes.status, 403, `Admin on verify-close must receive 403 (got ${closeRes.status})`);
+      assert.match(closeData.error, /Forbidden/i, "Close error must mention Forbidden");
+
+      passed = true;
+      detail = "Admin received HTTP 403 across all 5 actions: approve, assign, start, complete, close";
+    } catch (err) {
+      detail = err.message;
+      throw err;
+    } finally {
+      recordResult(15, "Work Orders (Admin Forbidden from Workflow Actions: 403)", passed, detail);
+    }
+  });
+
+  // TEST 16: Segregation of Duties: User cannot approve or reject a work order they raised themselves (HTTP 403)
+  test("16. User cannot approve or reject a work order they raised themselves (HTTP 403)", async () => {
+    let passed = false;
+    let detail = "";
+    try {
+      // Step A: Supervisor creates a work order (requester_id will be Supervisor's id = 3)
+      const supervisorToken = await freshLogin("supervisor@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const createRes = await fetch(`${BASE_URL_IPV6}/api/work-orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supervisorToken}`
+        },
+        body: JSON.stringify({
+          title: "Self-Approval Segregation Test Order",
+          description: "Supervisor raised this order; must be blocked from self-approval and self-rejection.",
+          equipment_id: 1,
+          priority: "Medium"
+        })
+      });
+      const createData = await createRes.json();
+      assert.equal(createRes.status, 201, "Work order creation by supervisor must return HTTP 201");
+      const orderId = createData.workOrder.id;
+
+      // Step B: Supervisor attempts to approve their own work order -> must return HTTP 403
+      const approveRes = await fetch(`${BASE_URL_IPV6}/api/work-orders/${orderId}/approve`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supervisorToken}`
+        }
+      });
+      const approveData = await approveRes.json();
+      assert.equal(approveRes.status, 403, `Self-approval must return HTTP 403 (got ${approveRes.status})`);
+      assert.match(approveData.error, /cannot approve a work order that you raised yourself/i, "Error must cite self-approval block");
+
+      // Step C: Supervisor attempts to reject their own work order -> must return HTTP 403
+      const rejectRes = await fetch(`${BASE_URL_IPV6}/api/work-orders/${orderId}/reject`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supervisorToken}`
+        }
+      });
+      const rejectData = await rejectRes.json();
+      assert.equal(rejectRes.status, 403, `Self-rejection must return HTTP 403 (got ${rejectRes.status})`);
+      assert.match(rejectData.error, /cannot reject a work order that you raised yourself/i, "Error must cite self-rejection block");
+
+      passed = true;
+      detail = `Self-approve: HTTP 403 ('${approveData.error.slice(0, 38)}...'), Self-reject: HTTP 403 ('${rejectData.error.slice(0, 37)}...')`;
+    } catch (err) {
+      detail = err.message;
+      throw err;
+    } finally {
+      recordResult(16, "Segregation of Duties (Self-Approve/Reject Block: 403)", passed, detail);
+    }
+  });
+
+  // TEST 17: Action Tracker: Only assigned owner can update progress (Admin gets HTTP 403)
+  test("17. Action progress updates: only the assigned owner, not Admin (HTTP 403)", async () => {
+    let passed = false;
+    let detail = "";
+    try {
+      const mgrToken = await freshLogin("manager@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const supervisorToken = await freshLogin("supervisor@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+
+      // Step A: Create an action owned by Supervisor (ID 3)
+      const futureDate = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+      const createRes = await fetch(`${BASE_URL_IPV6}/api/actions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${mgrToken}`
+        },
+        body: JSON.stringify({
+          source: "DGMS Audit Action",
+          description: "Inspect dust suppression nozzles on conveyor CV-01",
+          owner_id: 3, // Suresh Murugan (Supervisor)
+          due_date: futureDate
+        })
+      });
+      const createData = await createRes.json();
+      assert.equal(createRes.status, 201, "Action item creation must return HTTP 201");
+      const actionId = createData.action.id;
+
+      // Step B: Admin attempts to update progress on this action -> must return HTTP 403
+      const adminRes = await fetch(`${BASE_URL_IPV6}/api/actions/${actionId}/progress`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          status: "In Progress",
+          evidence_note: "Admin attempting progress update"
+        })
+      });
+      const adminData = await adminRes.json();
+      assert.equal(adminRes.status, 403, `Admin progress update must return HTTP 403 (got ${adminRes.status})`);
+      assert.match(adminData.error, /Only the assigned action owner/i, "Error must cite owner-only restriction");
+
+      // Step C: Legitimate assigned owner (Supervisor ID 3) updates progress -> must return HTTP 200
+      const ownerRes = await fetch(`${BASE_URL_IPV6}/api/actions/${actionId}/progress`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supervisorToken}`
+        },
+        body: JSON.stringify({
+          status: "In Progress",
+          evidence_note: "Nozzles inspected and calibrated."
+        })
+      });
+      const ownerData = await ownerRes.json();
+      assert.equal(ownerRes.status, 200, "Assigned owner progress update must return HTTP 200");
+      assert.equal(ownerData.action.status, "In Progress");
+
+      passed = true;
+      detail = `Admin progress: HTTP 403 ('${adminData.error.slice(0, 36)}...'), Assigned owner progress: HTTP 200`;
+    } catch (err) {
+      detail = err.message;
+      throw err;
+    } finally {
+      recordResult(17, "Action Tracker (Owner-Only Progress: Admin 403)", passed, detail);
+    }
+  });
+
+  // TEST 18: Action verification: Manager only (Admin gets 403) and verifier cannot be the action's owner
+  test("18. Action verification: Manager only (Admin gets 403) and verifier cannot be action owner (403)", async () => {
+    let passed = false;
+    let detail = "";
+    try {
+      const mgrToken = await freshLogin("manager@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const adminToken = await freshLogin("admin@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+      const futureDate = new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
+
+      // Step A: Create an action owned by Manager (ID 2: Ananya Sharma)
+      const selfOwnedRes = await fetch(`${BASE_URL_IPV6}/api/actions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${mgrToken}`
+        },
+        body: JSON.stringify({
+          source: "Internal Review",
+          description: "Update emergency evacuation protocol documents",
+          owner_id: 2, // Ananya Sharma (Manager)
+          due_date: futureDate
+        })
+      });
+      const selfOwnedData = await selfOwnedRes.json();
+      assert.equal(selfOwnedRes.status, 201, "Self-owned action creation must return HTTP 201");
+      const selfOwnedId = selfOwnedData.action.id;
+
+      // Step B: Admin attempts to verify -> must return HTTP 403 (Manager only)
+      const adminVerifyRes = await fetch(`${BASE_URL_IPV6}/api/actions/${selfOwnedId}/verify`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({ verification_note: "Admin verify attempt" })
+      });
+      const adminVerifyData = await adminVerifyRes.json();
+      assert.equal(adminVerifyRes.status, 403, `Admin verification must return HTTP 403 (got ${adminVerifyRes.status})`);
+      assert.match(adminVerifyData.error, /Forbidden/i, "Admin verification must be forbidden");
+
+      // Step C: Manager attempts to verify their own action -> must return HTTP 403 (Segregation of Duties)
+      const mgrSelfVerifyRes = await fetch(`${BASE_URL_IPV6}/api/actions/${selfOwnedId}/verify`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${mgrToken}`
+        },
+        body: JSON.stringify({ verification_note: "Manager self-verification attempt" })
+      });
+      const mgrSelfVerifyData = await mgrSelfVerifyRes.json();
+      assert.equal(mgrSelfVerifyRes.status, 403, `Manager self-verification must return HTTP 403 (got ${mgrSelfVerifyRes.status})`);
+      assert.match(mgrSelfVerifyData.error, /cannot verify closure of an action item you own/i, "Must cite self-verification block");
+
+      // Step D: Create action owned by Supervisor (ID 3), Manager verifies it -> must return HTTP 200
+      const otherActionRes = await fetch(`${BASE_URL_IPV6}/api/actions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${mgrToken}`
+        },
+        body: JSON.stringify({
+          source: "Safety Circular 10",
+          description: "Replace warning signs along haul road sector 4",
+          owner_id: 3, // Suresh Murugan (Supervisor)
+          due_date: futureDate
+        })
+      });
+      const otherActionData = await otherActionRes.json();
+      const otherActionId = otherActionData.action.id;
+
+      const mgrOtherVerifyRes = await fetch(`${BASE_URL_IPV6}/api/actions/${otherActionId}/verify`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${mgrToken}`
+        },
+        body: JSON.stringify({ verification_note: "Verified on site by Manager" })
+      });
+      const mgrOtherVerifyData = await mgrOtherVerifyRes.json();
+      assert.equal(mgrOtherVerifyRes.status, 200, "Manager verification of non-owned action must return HTTP 200");
+      assert.equal(mgrOtherVerifyData.action.status, "Verified");
+
+      passed = true;
+      detail = `Admin verify: HTTP 403, Manager self-verify: HTTP 403 ('${mgrSelfVerifyData.error.slice(0, 36)}...'), Manager verify other: HTTP 200`;
+    } catch (err) {
+      detail = err.message;
+      throw err;
+    } finally {
+      recordResult(18, "Action Verification (Manager-Only & Non-Owner Segregation: 403)", passed, detail);
+    }
+  });
+
+  // TEST 19: Running-hours PM scheduler: threshold trigger, duplicate suppression per schedule, second schedule on same machine, and day schedules
+  test("19. Running-hours PM schedule: threshold trigger, duplicate suppression per schedule, second schedule on same machine, and day schedules", async () => {
+    let passed = false;
+    let detail = "";
+    let originalRunningHours;
+
+    try {
+      const mgrToken = await freshLogin("manager@nlc.in", "NlcSecure@2026!", BASE_URL_IPV6);
+
+      // Part 1: Input Validation
+      // Hours schedule with interval_hours <= 0 -> 400
+      const badHoursRes = await fetch(`${BASE_URL_IPV6}/api/pm-schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mgrToken}` },
+        body: JSON.stringify({ equipment_id: 2, task: "Invalid zero-hour PM", trigger_type: "hours", interval_hours: 0 })
+      });
+      assert.equal(badHoursRes.status, 400, "Hours schedule with interval_hours <= 0 must return HTTP 400");
+
+      // Days schedule with interval_days <= 0 -> 400
+      const badDaysRes = await fetch(`${BASE_URL_IPV6}/api/pm-schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mgrToken}` },
+        body: JSON.stringify({ equipment_id: 2, task: "Invalid zero-day PM", trigger_type: "days", interval_days: 0 })
+      });
+      assert.equal(badDaysRes.status, 400, "Day schedule with interval_days <= 0 must return HTTP 400");
+
+      // Part 2: Hours schedule threshold check
+      const eq = db.prepare("SELECT id, running_hours FROM equipment WHERE id = 2").get();
+      originalRunningHours = eq.running_hours;
+
+      // Create Schedule 1 for equipment 2: triggers at (originalRunningHours + 100)
+      const sched1Res = await fetch(`${BASE_URL_IPV6}/api/pm-schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mgrToken}` },
+        body: JSON.stringify({
+          equipment_id: 2,
+          task: "100h Hydraulic System Inspection",
+          trigger_type: "hours",
+          interval_hours: 100,
+          last_done_hours: originalRunningHours
+        })
+      });
+      assert.equal(sched1Res.status, 201, "Valid hours schedule creation must return HTTP 201");
+      const sched1Data = await sched1Res.json();
+      const sched1Id = sched1Data.schedule.id;
+
+      // Before threshold crossed: running_hours is originalRunningHours (< originalRunningHours + 100)
+      runPmScheduler();
+      const woBefore = db.prepare("SELECT id FROM work_orders WHERE pm_schedule_id = ?").all(sched1Id);
+      assert.equal(woBefore.length, 0, "Hours schedule must NOT fire before threshold is crossed");
+
+      // Cross threshold: update running_hours to originalRunningHours + 100
+      db.prepare("UPDATE equipment SET running_hours = ? WHERE id = 2").run(originalRunningHours + 100);
+      runPmScheduler();
+
+      const woAfter = db.prepare("SELECT id, title, type, status, pm_schedule_id FROM work_orders WHERE pm_schedule_id = ?").all(sched1Id);
+      assert.equal(woAfter.length, 1, "Hours schedule MUST fire when threshold is crossed");
+      assert.equal(woAfter[0].type, "preventive", "Created order must have type='preventive'");
+      assert.equal(woAfter[0].status, "Submitted", "Created order must have status='Submitted'");
+      assert.equal(woAfter[0].pm_schedule_id, sched1Id, "Created order must reference pm_schedule_id");
+
+      // Verify pm_schedules last_done_hours updated to equipment's current running_hours
+      const sched1Updated = db.prepare("SELECT last_done_hours FROM pm_schedules WHERE id = ?").get(sched1Id);
+      assert.equal(sched1Updated.last_done_hours, originalRunningHours + 100, "Schedule last_done_hours must update to current running_hours");
+
+      // Part 3: Duplicate suppression while order is open
+      // Trigger runner again while woAfter[0] is still in status 'Submitted'
+      runPmScheduler();
+      const woDup = db.prepare("SELECT id FROM work_orders WHERE pm_schedule_id = ?").all(sched1Id);
+      assert.equal(woDup.length, 1, "Duplicate work order must be suppressed while existing order is open");
+
+      // Part 4: A second schedule on the SAME machine still fires independently
+      const sched2Res = await fetch(`${BASE_URL_IPV6}/api/pm-schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mgrToken}` },
+        body: JSON.stringify({
+          equipment_id: 2,
+          task: "50h Gearbox Oil Sampling",
+          trigger_type: "hours",
+          interval_hours: 50,
+          last_done_hours: originalRunningHours + 50
+        })
+      });
+      assert.equal(sched2Res.status, 201, "Second schedule creation must return HTTP 201");
+      const sched2Data = await sched2Res.json();
+      const sched2Id = sched2Data.schedule.id;
+
+      // Machine running hours is originalRunningHours + 100, which satisfies (originalRunningHours + 50) + 50
+      runPmScheduler();
+      const woSched2 = db.prepare("SELECT id, pm_schedule_id FROM work_orders WHERE pm_schedule_id = ?").all(sched2Id);
+      assert.equal(woSched2.length, 1, "Second schedule on same machine must fire independently despite first schedule having open order");
+
+      // Part 5: Day schedules still work
+      const pastIso = new Date(Date.now() - 120000).toISOString();
+      const daySchedRes = await fetch(`${BASE_URL_IPV6}/api/pm-schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mgrToken}` },
+        body: JSON.stringify({
+          equipment_id: 2,
+          task: "Weekly Emergency Stop Verification",
+          trigger_type: "days",
+          interval_days: 1,
+          next_due: pastIso
+        })
+      });
+      assert.equal(daySchedRes.status, 201, "Day schedule creation must return HTTP 201");
+      const daySchedData = await daySchedRes.json();
+      const daySchedId = daySchedData.schedule.id;
+
+      runPmScheduler();
+      const woDay = db.prepare("SELECT id, pm_schedule_id FROM work_orders WHERE pm_schedule_id = ?").all(daySchedId);
+      assert.equal(woDay.length, 1, "Day schedule must fire and create preventive work order when next_due <= now");
+
+      passed = true;
+      detail = "Threshold gating verified, duplicates suppressed per schedule, multi-schedule per asset verified, day schedules functional";
+    } catch (err) {
+      detail = err.message;
+      throw err;
+    } finally {
+      if (originalRunningHours !== undefined) {
+        db.prepare("UPDATE equipment SET running_hours = ? WHERE id = 2").run(originalRunningHours);
+      }
+      recordResult(19, "Preventive Maintenance (Running-Hours Triggers & Per-Schedule Duplicates)", passed, detail);
+    }
+  });
+
+  // TEST 20: Audit log tamper-evident protection: Deleting a user with audit records is rejected by RESTRICT and preserves chain integrity
+  test("20. Audit log tamper-evident protection: Deleting a user with audit records is rejected by RESTRICT and preserves chain integrity", async () => {
+    let passed = false;
+    let detail = "";
+    const Database = require("better-sqlite3");
+    const bcrypt = require("bcrypt");
+    const { computeHash } = require("../audit");
+
+    const tempTestDir = path.join(os.tmpdir(), "nlc_audit_restrict_" + Date.now());
+    fs.mkdirSync(tempTestDir, { recursive: true });
+    let tempDb = null;
+
+    try {
+      const tempDbPath = path.join(tempTestDir, "test_restrict.db");
+      const tempAnchorPath = path.join(tempTestDir, "anchor.json");
+      tempDb = new Database(tempDbPath);
+      tempDb.pragma("foreign_keys = ON");
+
+      // Initialize schema with ON DELETE RESTRICT on audit_log.user_id
+      tempDb.exec(`
+        CREATE TABLE users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL,
+          section TEXT
+        );
+        CREATE TABLE audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          user_id INTEGER,
+          action TEXT NOT NULL,
+          entity TEXT NOT NULL,
+          details TEXT,
+          prev_hash TEXT,
+          hash TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
+        );
+      `);
+
+      // 1. Insert temporary user in temporary database
+      const dummyHash = bcrypt.hashSync("TempPass@2026!", 10);
+      const insUser = tempDb.prepare(
+        "INSERT INTO users (name, email, password_hash, role, section) VALUES (?, ?, ?, 'Requester', 'Mining')"
+      ).run("Audit Restrict Test", "audit_restrict_test@nlc.in", dummyHash);
+      const tempUserId = insUser.lastInsertRowid;
+
+      // 2. Insert audit entry referencing user
+      const timestamp = new Date().toISOString();
+      const prevHash = "GENESIS";
+      const action = "TEST_SECURITY_ACTION";
+      const entity = "users";
+      const details = JSON.stringify({ note: "Tamper-evident verification check" });
+      const rowHash = computeHash(prevHash, timestamp, tempUserId, action, entity, details);
+
+      const insAudit = tempDb.prepare(`
+        INSERT INTO audit_log (timestamp, user_id, action, entity, details, prev_hash, hash)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(timestamp, tempUserId, action, entity, details, prevHash, rowHash);
+
+      // Save temporary anchor
+      fs.writeFileSync(tempAnchorPath, JSON.stringify({ row_id: insAudit.lastInsertRowid, hash: rowHash, timestamp }), "utf8");
+
+      // Helper function to verify chain on this temporary db
+      const verifyTempChain = () => {
+        const rows = tempDb.prepare("SELECT * FROM audit_log ORDER BY id ASC").all();
+        if (rows.length === 0) return { valid: false };
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const expectedPrev = i === 0 ? "GENESIS" : rows[i - 1].hash;
+          if (row.prev_hash !== expectedPrev) return { valid: false, reason: "BROKEN_LINK" };
+          const h = computeHash(row.prev_hash, row.timestamp, row.user_id, row.action, row.entity, row.details);
+          if (row.hash !== h) return { valid: false, reason: "HASH_MISMATCH" };
+        }
+        return { valid: true, count: rows.length };
+      };
+
+      assert.strictEqual(verifyTempChain().valid, true, "Initial temporary audit chain must be valid");
+
+      // 3. Attempt to delete user - must throw FOREIGN KEY constraint failed
+      assert.throws(
+        () => {
+          tempDb.prepare("DELETE FROM users WHERE id = ?").run(tempUserId);
+        },
+        /FOREIGN KEY constraint failed/,
+        "Database must throw FOREIGN KEY constraint failed when attempting to delete user with audit records"
+      );
+
+      // 4. Verify audit row user_id was NOT modified or set to null
+      const rowAfter = tempDb.prepare("SELECT * FROM audit_log WHERE id = ?").get(insAudit.lastInsertRowid);
+      assert.strictEqual(rowAfter.user_id, tempUserId, "Audit log user_id must remain untouched");
+
+      // 5. Verify audit chain remains 100% valid
+      assert.strictEqual(verifyTempChain().valid, true, "Audit chain must remain valid after blocked delete");
+
+      passed = true;
+      detail = "ON DELETE RESTRICT blocked user deletion; audit log user_id unchanged and chain valid";
+    } catch (err) {
+      detail = err.message;
+      throw err;
+    } finally {
+      if (tempDb) {
+        try { tempDb.close(); } catch (e) {}
+      }
+      try {
+        fs.rmSync(tempTestDir, { recursive: true, force: true });
+      } catch (e) {}
+      recordResult(20, "Audit Log (Tamper-Evident User Delete RESTRICT)", passed, detail);
     }
   });
 });

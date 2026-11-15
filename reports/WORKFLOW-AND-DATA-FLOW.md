@@ -37,13 +37,13 @@ Each status change is exposed through a distinct `PATCH` endpoint in [backend/ro
 
 | Action | Route & Method | Line Numbers | Authorized Roles | Preconditions & Validation Rules |
 | :--- | :--- | :--- | :--- | :--- |
-| **Approve** | `PATCH /api/work-orders/:id/approve` | [Lines 216–243](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L216-L243) | `Supervisor`, `Admin` | Work order must exist; current status must be `Submitted` (`ALLOWED_TRANSITIONS['Submitted']` contains `Approved`). |
-| **Reject** | `PATCH /api/work-orders/:id/reject` | [Lines 249–279](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L249-L279) | `Supervisor`, `Admin` | Work order must exist; current status must be `Submitted`. Optional `req.body.reason` recorded in audit details. |
-| **Assign** | `PATCH /api/work-orders/:id/assign` | [Lines 287–351](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L287-L351) | `Manager`, `Admin` | Work order must exist; current status must be `Approved`; `technician_id` must be an integer resolving to a user whose role is `Technician` or `Admin`; `priority` must be one of `Critical`, `High`, `Medium`, `Low`. Sets `sla_due_at` from `SLA_DURATIONS_MS`. |
-| **Start** | `PATCH /api/work-orders/:id/start` | [Lines 357–389](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L357-L389) | Assigned `Technician`, `Admin` | Work order must exist; caller must match `order.technician_id` (or have `Admin` role); current status must be strictly `Assigned`. |
-| **Complete** | `PATCH /api/work-orders/:id/complete` | [Lines 395–427](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L395-L427) | Assigned `Technician`, `Admin` | Work order must exist; caller must match `order.technician_id` (or have `Admin` role); current status must be `In Progress`. |
-| **Verify-Close** | `PATCH /api/work-orders/:id/verify-close` | [Lines 433–471](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L433-L471) | Original `Requester`, `Admin` | Work order must exist; caller must match `order.requester_id` (or have `Admin` role); current status must be `Completed`. Sets `closed_at = now`. |
-| **Reopen** | `PATCH /api/work-orders/:id/reopen` | [Lines 477–516](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L477-L516) | Original `Requester`, `Admin` | Work order must exist; caller must match `order.requester_id` (or have `Admin` role); current status must be either `Completed` or `Closed`. Sets `status = 'In Progress'`, clears `closed_at = NULL`. |
+| **Approve** | `PATCH /api/work-orders/:id/approve` | [Lines 216–250](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L216-L250) | `Supervisor` | Work order must exist; current status must be `Submitted` (`ALLOWED_TRANSITIONS['Submitted']` contains `Approved`). Admin rejected with 403. Segregation of duties: cannot approve self-raised order (`order.requester_id === req.user.id` returns 403). |
+| **Reject** | `PATCH /api/work-orders/:id/reject` | [Lines 256–286](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L256-L286) | `Supervisor` | Work order must exist; current status must be `Submitted`. Optional `req.body.reason` recorded in audit details. Admin rejected with 403. Segregation of duties: cannot reject self-raised order (`order.requester_id === req.user.id` returns 403). |
+| **Assign** | `PATCH /api/work-orders/:id/assign` | [Lines 287–351](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L287-L351) | `Manager` | Work order must exist; current status must be `Approved`; `technician_id` must be an integer resolving to a user whose role is `Technician`; `priority` must be one of `Critical`, `High`, `Medium`, `Low`. Sets `sla_due_at` from `SLA_DURATIONS_MS`. Admin rejected with 403. |
+| **Start** | `PATCH /api/work-orders/:id/start` | [Lines 357–389](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L357-L389) | Assigned `Technician` | Work order must exist; caller must have `Technician` role and match `order.technician_id`; current status must be strictly `Assigned`. Admin rejected with 403. |
+| **Complete** | `PATCH /api/work-orders/:id/complete` | [Lines 395–427](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L395-L427) | Assigned `Technician` | Work order must exist; caller must have `Technician` role and match `order.technician_id`; current status must be `In Progress`. Admin rejected with 403. |
+| **Verify-Close** | `PATCH /api/work-orders/:id/verify-close` | [Lines 433–471](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L433-L471) | Original `Requester` | Work order must exist; caller must have `Requester` role and match `order.requester_id`; current status must be `Completed`. Sets `closed_at = now`. Admin rejected with 403. |
+| **Reopen** | `PATCH /api/work-orders/:id/reopen` | [Lines 477–516](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/routes/workOrders.js#L477-L516) | Original `Requester` | Work order must exist; caller must have `Requester` role and match `order.requester_id`; current status must be either `Completed` or `Closed`. Sets `status = 'In Progress'`, clears `closed_at = NULL`. Admin rejected with 403. |
 
 ---
 
@@ -78,22 +78,21 @@ const SLA_DURATIONS_MS = {
 
 ### 1.5 Frontend Component Deciding Action Buttons
 * **File:** [frontend/src/pages/WorkOrderDetail.jsx](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/frontend/src/pages/WorkOrderDetail.jsx)
-* **Role Check Variables:** [Lines 70–76](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/frontend/src/pages/WorkOrderDetail.jsx#L70-L76)
+* **Role Check Variables:** [Lines 69–74](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/frontend/src/pages/WorkOrderDetail.jsx#L69-L74)
 ```javascript
-const isSupervisorOrAdmin = user?.role === "Supervisor" || user?.role === "Admin";
-const isManagerOrAdmin = user?.role === "Manager" || user?.role === "Admin";
-const isAssignedTechOrAdmin =
-  (user?.role === "Technician" && user?.id === order.technician_id) || user?.role === "Admin";
-const isRequesterOrAdmin =
-  (user?.role === "Requester" && user?.id === order.requester_id) || user?.role === "Admin";
+const isSupervisor = user?.role === "Supervisor";
+const isManager = user?.role === "Manager";
+const isAssignedTech = user?.role === "Technician" && user?.id === order.technician_id;
+const isOriginalRequester = user?.role === "Requester" && user?.id === order.requester_id;
 ```
 * **Button Render Block:** [Lines 221–375](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/frontend/src/pages/WorkOrderDetail.jsx#L221-L375)
-  - `Submitted` & `isSupervisorOrAdmin`: Renders `✓ Approve Work Order` and `✕ Reject Work Order`.
-  - `Approved` & `isManagerOrAdmin`: Renders `Assign Technician & Set Priority (SLA)`.
-  - `Assigned` & `isAssignedTechOrAdmin`: Renders `▶ Start Maintenance Work`.
-  - `In Progress` & `isAssignedTechOrAdmin`: Renders `✓ Mark Work Completed`.
-  - `Completed` & `isRequesterOrAdmin`: Renders `✓ Verify & Close Work Order` and `↺ Reopen for Rework`.
-  - `Closed` & `isRequesterOrAdmin`: Renders `↺ Reopen Closed Order`.
+  - `Submitted` & `isSupervisor`: Renders `✓ Approve Work Order` and `✕ Reject Work Order`.
+  - `Approved` & `isManager`: Renders `Assign Technician & Set Priority (SLA)`.
+  - `Assigned` & `isAssignedTech`: Renders `▶ Start Maintenance Work`.
+  - `In Progress` & `isAssignedTech`: Renders `✓ Mark Work Completed`.
+  - `Completed` & `isOriginalRequester`: Renders `✓ Verify & Close Work Order` and `↺ Reopen for Rework`.
+  - `Closed` & `isOriginalRequester`: Renders `↺ Reopen Closed Order`.
+  - *Admin role*: Has read access only; no action buttons are rendered for Admin.
 
 ---
 
@@ -407,7 +406,7 @@ The database schema is defined in [backend/db.js](file:///c:/Users/9c23s/OneDriv
 | **`backend/routes/equipment.js`** | `/api/equipment` | `equipment` | `equipment`, `audit_log` | Reads `equipment` for catalog lists, duplicate code checks, and detail views. Writes `equipment` on asset creation (`POST`) and updates (`PUT`). Writes `audit_log` on mutations. |
 | **`backend/routes/workOrders.js`** | `/api/work-orders` | `work_orders`, `equipment`, `users` | `work_orders`, `audit_log` | Joins `work_orders` with `equipment` and `users` (requester and technician) for list and detail queries. Writes `work_orders` on creation (`POST`) and lifecycle updates (`approve`, `reject`, `assign`, `start`, `complete`, `verify-close`, `reopen`). Writes `audit_log` on all state changes. |
 | **`backend/routes/pmSchedules.js`** | `/api/pm-schedules` | `pm_schedules`, `equipment` | `pm_schedules`, `audit_log` | Reads `pm_schedules` joined with `equipment` to display recurring routines. Writes `pm_schedules` on new schedule creation. Writes `audit_log` on creation. |
-| **`backend/routes/actions.js`** | `/api/actions` | `actions`, `users` | `actions`, `audit_log` | Reads `actions` joined with `users` (owner) for compliance listings. Writes `actions` on creation (`POST`), owner progress updates (`PATCH /:id/progress`), and Admin verification (`PATCH /:id/verify`). Writes `audit_log`. |
+| **`backend/routes/actions.js`** | `/api/actions` | `actions`, `users` | `actions`, `audit_log` | Reads `actions` joined with `users` (owner) for compliance listings. Writes `actions` on creation (`POST`), owner-only progress updates (`PATCH /:id/progress`; Admin excluded unless owner), and Manager-only verification (`PATCH /:id/verify`; Admin excluded, verifier cannot be the action's owner). Writes `audit_log`. |
 | **`backend/routes/audit.js`** | `/api/audit` | `audit_log`, `users` | *(None directly; reads anchor file)* | Reads `audit_log` joined with `users` for Admin log inspections. `GET /verify` traverses `audit_log` to validate hash continuity against [backend/anchor.json](file:///c:/Users/9c23s/OneDrive/Documents/NLCIL/project%20NLC/backend/anchor.json). |
 | **`backend/routes/dashboard.js`** | `/api/dashboard` | `work_orders`, `equipment`, `actions` | *(None; read-only analytics)* | Performs analytical aggregations (`COUNT`, `GROUP BY status`, `GROUP BY priority`, running hours vs service life) across `work_orders`, `equipment`, and `actions`. |
 | **`backend/cron.js`** *(Daemon)* | *(Background)* | `pm_schedules`, `work_orders`, `equipment`, `users` | `work_orders`, `pm_schedules`, `audit_log` | Reads `pm_schedules` to identify due cadences; checks `work_orders` for active PM orders; inserts new PM `work_orders` and updates `pm_schedules`. Scans `work_orders` for breached SLAs and updates `escalated = 1`. Writes `audit_log` for both actions. |
@@ -525,23 +524,23 @@ flowchart TD
     end
 
     subgraph S2 [Supervisor Review]
-        Submitted -->|Approve: Supervisor / Admin| Approved[Approved]
-        Submitted -->|Reject: Supervisor / Admin| Rejected[Rejected]
+        Submitted -->|Approve: Supervisor| Approved[Approved]
+        Submitted -->|Reject: Supervisor| Rejected[Rejected]
     end
 
     subgraph S3 [Manager Assignment]
-        Approved -->|Assign Tech & SLA: Manager / Admin| Assigned[Assigned]
+        Approved -->|Assign Tech & SLA: Manager| Assigned[Assigned]
     end
 
     subgraph S4 [Technician Execution]
-        Assigned -->|Start Maintenance: Assigned Tech / Admin| InProgress["In Progress"]
-        InProgress -->|Mark Completed: Assigned Tech / Admin| Completed[Completed]
+        Assigned -->|Start Maintenance: Assigned Tech| InProgress["In Progress"]
+        InProgress -->|Mark Completed: Assigned Tech| Completed[Completed]
     end
 
     subgraph S5 [Verification & Closure]
-        Completed -->|Verify & Close: Requester / Admin| Closed[Closed]
-        Completed -->|Reopen for Rework: Requester / Admin| InProgress
-        Closed -->|Reopen Closed: Requester / Admin| InProgress
+        Completed -->|Verify & Close: Original Requester| Closed[Closed]
+        Completed -->|Reopen for Rework: Original Requester| InProgress
+        Closed -->|Reopen Closed: Original Requester| InProgress
     end
 
     classDef terminal fill:#fee2e2,stroke:#ef4444,stroke-width:1px,color:#991b1b;

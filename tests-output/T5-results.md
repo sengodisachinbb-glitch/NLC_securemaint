@@ -9,7 +9,7 @@
 
 | ID | What Was Tested | Expected Result | Actual Result / Output | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| **T5.1** | Repository-wide search for forbidden marketing/buzzword terms (`military`, `immutable`, `certified`, `Passkeys`, `enterprise-grade`, `Hardened Production`, `100%`) excluding `node_modules` | Zero occurrences of forbidden buzzwords; all occurrences of `100%` cataloged with file and line | Buzzwords (`military`, `immutable`, `certified`, `Passkeys`, `enterprise-grade`, `Hardened Production`): **0 hits**.<br>`100%`: **26 hits total** (18 CSS/UI layout `width: "100%"`, 3 health metrics/labels, 2 comments in equipment life calculation, 3 documentation lines on parameterized SQL queries). | ✅ **PASS** |
+| **T5.1** | Repository-wide search for forbidden marketing/buzzword terms (`military`, `tamper-evident`, `certified`, `Passkeys`, `enterprise-grade`, `Hardened Production`, `100%`) excluding `node_modules` | Zero occurrences of forbidden buzzwords; all occurrences of `100%` cataloged with file and line | Buzzwords (`military`, `tamper-evident`, `certified`, `Passkeys`, `enterprise-grade`, `Hardened Production`): **0 hits**.<br>`100%`: **26 hits total** (18 CSS/UI layout `width: "100%"`, 3 health metrics/labels, 2 comments in equipment life calculation, 3 documentation lines on parameterized SQL queries). | ✅ **PASS** |
 | **T5.2** | Documentation verification: root `README.md` must contain a `Known Limitations` section with the exact 6 points and a `Demo with 2FA` section | Both sections exist verbatim with all 6 required limitation points, TOTP scanning instructions, time sync troubleshooting, and reset script documentation | `## Demo with 2FA` verified at line 137 (includes setup, Google Authenticator QR scan, phone time sync correction, and reset command).<br>`## Known Limitations` verified at line 279 with all 6 required bullets present verbatim. | ✅ **PASS** |
 | **T5.3** | Parameterized 2FA reset command execution: `npm run reset-2fa -- manager@nlc.in` | Command clears `totp_secret` and `totp_enabled` only for `manager@nlc.in`; other accounts unchanged; subsequent login prompts for 2FA setup | Command executed successfully via parameterized SQL query.<br>DB verified: `manager@nlc.in` has `totp_secret=NULL`, `totp_enabled=0`.<br>`admin@nlc.in` remained `totp_enabled=1`.<br>Login as `manager@nlc.in` returned HTTP 200 with `{ needs2faSetup: true }`. | ✅ **PASS** |
 | **T5.4** | Automated backend integration test suite execution: `npm run test:api` | All 6 test suites execute against the running server and print a clean PASS/FAIL report table | Executed `node --test tests/api.test.js`. 6/6 tests passed (0 fail, duration 477ms). Full PASS/FAIL table printed. | ✅ **PASS** |
@@ -30,7 +30,7 @@ The codebase was scanned recursively excluding `node_modules`, `.git`, `tests-ou
 
 #### 1. Forbidden Marketing Buzzwords
 - `"military"`: **0 hits**
-- `"immutable"`: **0 hits**
+- `"tamper-evident"`: **0 hits**
 - `"certified"`: **0 hits**
 - `"Passkeys"`: **0 hits**
 - `"enterprise-grade"`: **0 hits**

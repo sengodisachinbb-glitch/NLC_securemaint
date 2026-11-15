@@ -62,7 +62,7 @@ router.get("/stats", authenticate, authorize("Manager", "Admin"), (req, res) => 
         AND status NOT IN ('Completed', 'Closed', 'Rejected')
     `).get().count;
 
-    // 3. Preventive Maintenance (PM) Compliance Percentage
+    // 3. Preventive Maintenance (PM) Compliance Percentage (counts both calendar-days and running-hours triggers)
     const totalPMOrders = db.prepare(`
       SELECT COUNT(*) as count
       FROM work_orders
@@ -74,6 +74,37 @@ router.get("/stats", authenticate, authorize("Manager", "Admin"), (req, res) => 
       FROM work_orders
       WHERE type = 'preventive'
         AND status IN ('Completed', 'Closed')
+    `).get().count;
+
+    // Breakdown for calendar-days vs running-hours triggers
+    const daysPMOrders = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM work_orders w
+      LEFT JOIN pm_schedules s ON w.pm_schedule_id = s.id
+      WHERE w.type = 'preventive' AND (s.trigger_type = 'days' OR s.trigger_type IS NULL)
+    `).get().count;
+
+    const hoursPMOrders = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM work_orders w
+      JOIN pm_schedules s ON w.pm_schedule_id = s.id
+      WHERE w.type = 'preventive' AND s.trigger_type = 'hours'
+    `).get().count;
+
+    const completedDaysPMOrders = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM work_orders w
+      LEFT JOIN pm_schedules s ON w.pm_schedule_id = s.id
+      WHERE w.type = 'preventive' AND (s.trigger_type = 'days' OR s.trigger_type IS NULL)
+        AND w.status IN ('Completed', 'Closed')
+    `).get().count;
+
+    const completedHoursPMOrders = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM work_orders w
+      JOIN pm_schedules s ON w.pm_schedule_id = s.id
+      WHERE w.type = 'preventive' AND s.trigger_type = 'hours'
+        AND w.status IN ('Completed', 'Closed')
     `).get().count;
 
     // If no preventive orders have been created yet, compliance is considered 100% baseline
@@ -121,7 +152,15 @@ router.get("/stats", authenticate, authorize("Manager", "Admin"), (req, res) => 
       preventiveMaintenance: {
         compliancePercentage: pmCompliancePercentage,
         totalPreventiveOrders: totalPMOrders,
-        completedPreventiveOrders: completedPMOrders
+        completedPreventiveOrders: completedPMOrders,
+        daysOrders: {
+          total: daysPMOrders,
+          completed: completedDaysPMOrders
+        },
+        hoursOrders: {
+          total: hoursPMOrders,
+          completed: completedHoursPMOrders
+        }
       },
       equipmentHealth: {
         green: equipmentHealth.green,

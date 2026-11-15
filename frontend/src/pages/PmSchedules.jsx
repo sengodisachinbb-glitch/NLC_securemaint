@@ -20,7 +20,9 @@ export const PmSchedules = () => {
   const [formData, setFormData] = useState({
     equipment_id: "",
     task: "",
-    interval_days: 7
+    trigger_type: "days",
+    interval_days: 7,
+    interval_hours: 500
   });
 
   const canManage = user?.role === "Manager" || user?.role === "Admin";
@@ -61,10 +63,28 @@ export const PmSchedules = () => {
     setSuccess("");
 
     try {
-      await api.post("/pm-schedules", formData);
+      const payload = {
+        equipment_id: Number(formData.equipment_id),
+        task: formData.task.trim(),
+        trigger_type: formData.trigger_type
+      };
+
+      if (formData.trigger_type === "hours") {
+        payload.interval_hours = Number(formData.interval_hours);
+      } else {
+        payload.interval_days = Number(formData.interval_days);
+      }
+
+      await api.post("/pm-schedules", payload);
       setSuccess("New preventive schedule created successfully.");
       setShowModal(false);
-      setFormData({ equipment_id: "", task: "", interval_days: 7 });
+      setFormData({
+        equipment_id: "",
+        task: "",
+        trigger_type: "days",
+        interval_days: 7,
+        interval_hours: 500
+      });
       fetchSchedules();
     } catch (err) {
       console.error(err);
@@ -134,9 +154,9 @@ export const PmSchedules = () => {
                 <th style={{ padding: "12px 16px" }}>ID</th>
                 <th style={{ padding: "12px 16px" }}>Asset</th>
                 <th style={{ padding: "12px 16px" }}>Routine Maintenance Task</th>
-                <th style={{ padding: "12px 16px" }}>Recurrence Interval</th>
+                <th style={{ padding: "12px 16px" }}>Trigger &amp; Interval</th>
                 <th style={{ padding: "12px 16px" }}>Last Triggered</th>
-                <th style={{ padding: "12px 16px" }}>Next Auto-Creation Due</th>
+                <th style={{ padding: "12px 16px" }}>Next Auto-Creation / Hours Remaining</th>
               </tr>
             </thead>
             <tbody>
@@ -149,15 +169,66 @@ export const PmSchedules = () => {
                   </td>
                   <td style={{ padding: "12px 16px", fontWeight: "500", color: "#1f2937" }}>{s.task}</td>
                   <td style={{ padding: "12px 16px" }}>
-                    <span style={{ backgroundColor: "#f1f5f9", padding: "3px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "600" }}>
-                      Every {s.interval_days} {intervalUnit}
-                    </span>
+                    {s.trigger_type === "hours" ? (
+                      <div>
+                        <span style={{ backgroundColor: "#e0e7ff", color: "#3730a3", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "700", display: "inline-block", marginBottom: "4px" }}>
+                          Running Hours
+                        </span>
+                        <div style={{ fontWeight: "600", color: "#1f2937" }}>
+                          Every {s.interval_hours} hrs
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <span style={{ backgroundColor: "#f1f5f9", color: "#334155", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "700", display: "inline-block", marginBottom: "4px" }}>
+                          Calendar Cadence
+                        </span>
+                        <div style={{ fontWeight: "600", color: "#1f2937" }}>
+                          Every {s.interval_days} {intervalUnit}
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "#6b7280" }}>
-                    {s.last_done ? new Date(s.last_done).toLocaleString() : "Pending first run"}
+                    {s.trigger_type === "hours" ? (
+                      s.last_done_hours > 0 ? (
+                        <div>
+                          <span style={{ fontWeight: "600", color: "#374151" }}>{s.last_done_hours} hrs</span>
+                          {s.last_done && (
+                            <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                              {new Date(s.last_done).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        "Pending first run"
+                      )
+                    ) : (
+                      s.last_done ? new Date(s.last_done).toLocaleString() : "Pending first run"
+                    )}
                   </td>
-                  <td style={{ padding: "12px 16px", fontSize: "0.85rem", fontWeight: "600", color: "#0284c7" }}>
-                    {new Date(s.next_due).toLocaleString()}
+                  <td style={{ padding: "12px 16px", fontSize: "0.85rem" }}>
+                    {s.trigger_type === "hours" ? (
+                      <div>
+                        <span
+                          style={{
+                            fontWeight: "700",
+                            color: s.hours_remaining === 0 ? "#dc2626" : "#0284c7"
+                          }}
+                        >
+                          {s.hours_remaining !== null && s.hours_remaining !== undefined
+                            ? `${s.hours_remaining} hrs remaining`
+                            : "Calculating..."}
+                        </span>
+                        <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                          Due at {(s.last_done_hours || 0) + (s.interval_hours || 0)} hrs (Current: {s.equipment_running_hours || 0} hrs)
+                        </div>
+                      </div>
+                    ) : (
+                      <span style={{ fontWeight: "600", color: "#0284c7" }}>
+                        {s.next_due ? new Date(s.next_due).toLocaleString() : "—"}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -207,6 +278,19 @@ export const PmSchedules = () => {
               </div>
 
               <div className="form-group">
+                <label className="form-label">Trigger Type</label>
+                <select
+                  className="form-input"
+                  value={formData.trigger_type}
+                  onChange={(e) => setFormData({ ...formData, trigger_type: e.target.value })}
+                  required
+                >
+                  <option value="days">Calendar Interval ({demoMode ? "Minutes - Demo Mode" : "Days"})</option>
+                  <option value="hours">Equipment Running Hours (Hours Threshold)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Maintenance Task Description</label>
                 <input
                   type="text"
@@ -218,24 +302,44 @@ export const PmSchedules = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Recurrence Interval ({demoMode ? "Minutes - Demo Mode" : "Days"})
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  className="form-input"
-                  value={formData.interval_days}
-                  onChange={(e) => setFormData({ ...formData, interval_days: e.target.value })}
-                  required
-                />
-                <small style={{ color: "#6b7280", marginTop: "4px", display: "block" }}>
-                  {demoMode
-                    ? "In DEMO_MODE, entering 2 will trigger a PM work order in 2 minutes."
-                    : "Work orders will auto-generate automatically based on this cadence."}
-                </small>
-              </div>
+              {formData.trigger_type === "hours" ? (
+                <div className="form-group">
+                  <label className="form-label">
+                    Running Hours Interval (Hours)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input"
+                    value={formData.interval_hours}
+                    onChange={(e) => setFormData({ ...formData, interval_hours: e.target.value })}
+                    placeholder="e.g. 250"
+                    required
+                  />
+                  <small style={{ color: "#6b7280", marginTop: "4px", display: "block" }}>
+                    A preventive order triggers automatically when equipment reaches (last done + interval) running hours.
+                  </small>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">
+                    Recurrence Interval ({demoMode ? "Minutes - Demo Mode" : "Days"})
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input"
+                    value={formData.interval_days}
+                    onChange={(e) => setFormData({ ...formData, interval_days: e.target.value })}
+                    required
+                  />
+                  <small style={{ color: "#6b7280", marginTop: "4px", display: "block" }}>
+                    {demoMode
+                      ? "In DEMO_MODE, entering 2 will trigger a PM work order in 2 minutes."
+                      : "Work orders will auto-generate automatically based on this cadence."}
+                  </small>
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                 <button type="submit" className="btn-primary" style={{ flex: 1, marginTop: 0 }}>

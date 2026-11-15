@@ -55,6 +55,7 @@ const BASE_WORK_ORDER_QUERY = `
     w.priority,
     w.status,
     w.type,
+    w.pm_schedule_id,
     w.sla_due_at,
     w.escalated,
     w.created_at,
@@ -210,13 +211,20 @@ router.get("/:id", authenticate, (req, res) => {
 // ==========================================
 
 /**
- * PATCH /api/work-orders/:id/approve (Supervisor & Admin)
+ * PATCH /api/work-orders/:id/approve (Supervisor only)
  * Transition: Submitted -> Approved
  */
-router.patch("/:id/approve", authenticate, authorize("Supervisor", "Admin"), (req, res) => {
+router.patch("/:id/approve", authenticate, authorize("Supervisor"), (req, res) => {
   try {
     const order = getWorkOrderById(req.params.id);
     if (!order) return res.status(404).json({ error: "Work order not found." });
+
+    // Segregation of duties: A user cannot approve a work order they raised themselves
+    if (order.requester_id === req.user.id) {
+      return res.status(403).json({
+        error: "Forbidden: You cannot approve a work order that you raised yourself (segregation of duties enforced)."
+      });
+    }
 
     const targetStatus = "Approved";
     if (!validateTransition(order.status, targetStatus)) {
@@ -243,13 +251,20 @@ router.patch("/:id/approve", authenticate, authorize("Supervisor", "Admin"), (re
 });
 
 /**
- * PATCH /api/work-orders/:id/reject (Supervisor & Admin)
+ * PATCH /api/work-orders/:id/reject (Supervisor only)
  * Transition: Submitted -> Rejected
  */
-router.patch("/:id/reject", authenticate, authorize("Supervisor", "Admin"), (req, res) => {
+router.patch("/:id/reject", authenticate, authorize("Supervisor"), (req, res) => {
   try {
     const order = getWorkOrderById(req.params.id);
     if (!order) return res.status(404).json({ error: "Work order not found." });
+
+    // Segregation of duties: A user cannot reject a work order they raised themselves
+    if (order.requester_id === req.user.id) {
+      return res.status(403).json({
+        error: "Forbidden: You cannot reject a work order that you raised yourself (segregation of duties enforced)."
+      });
+    }
 
     const targetStatus = "Rejected";
     if (!validateTransition(order.status, targetStatus)) {
@@ -279,7 +294,7 @@ router.patch("/:id/reject", authenticate, authorize("Supervisor", "Admin"), (req
 });
 
 /**
- * PATCH /api/work-orders/:id/assign (Manager & Admin)
+ * PATCH /api/work-orders/:id/assign (Manager only)
  * Transition: Approved -> Assigned
  * Body: { technician_id, priority: "Critical" | "High" | "Medium" | "Low" }
  * Computes SLA: Critical 4h, High 24h, Medium 3d, Low 7d.
@@ -287,7 +302,7 @@ router.patch("/:id/reject", authenticate, authorize("Supervisor", "Admin"), (req
 router.patch(
   "/:id/assign",
   authenticate,
-  authorize("Manager", "Admin"),
+  authorize("Manager"),
   [
     body("technician_id").isInt({ gt: 0 }).withMessage("Valid technician_id is required."),
     body("priority")
@@ -318,7 +333,7 @@ router.patch(
       if (!technician) {
         return res.status(404).json({ error: `User with ID ${technician_id} not found.` });
       }
-      if (technician.role !== "Technician" && technician.role !== "Admin") {
+      if (technician.role !== "Technician") {
         return res.status(400).json({ error: `User '${technician.name}' has role '${technician.role}', must be 'Technician'.` });
       }
 
@@ -351,16 +366,16 @@ router.patch(
 );
 
 /**
- * PATCH /api/work-orders/:id/start (Assigned Technician or Admin)
+ * PATCH /api/work-orders/:id/start (Assigned Technician only)
  * Transition: Assigned -> In Progress
  */
-router.patch("/:id/start", authenticate, (req, res) => {
+router.patch("/:id/start", authenticate, authorize("Technician"), (req, res) => {
   try {
     const order = getWorkOrderById(req.params.id);
     if (!order) return res.status(404).json({ error: "Work order not found." });
 
-    // Must be assigned technician or Admin
-    if (req.user.role !== "Admin" && order.technician_id !== req.user.id) {
+    // Must be assigned technician
+    if (order.technician_id !== req.user.id) {
       return res.status(403).json({ error: "Forbidden: Only the assigned technician can start this work order." });
     }
 
@@ -389,16 +404,16 @@ router.patch("/:id/start", authenticate, (req, res) => {
 });
 
 /**
- * PATCH /api/work-orders/:id/complete (Assigned Technician or Admin)
+ * PATCH /api/work-orders/:id/complete (Assigned Technician only)
  * Transition: In Progress -> Completed
  */
-router.patch("/:id/complete", authenticate, (req, res) => {
+router.patch("/:id/complete", authenticate, authorize("Technician"), (req, res) => {
   try {
     const order = getWorkOrderById(req.params.id);
     if (!order) return res.status(404).json({ error: "Work order not found." });
 
-    // Must be assigned technician or Admin
-    if (req.user.role !== "Admin" && order.technician_id !== req.user.id) {
+    // Must be assigned technician
+    if (order.technician_id !== req.user.id) {
       return res.status(403).json({ error: "Forbidden: Only the assigned technician can complete this work order." });
     }
 
@@ -427,16 +442,16 @@ router.patch("/:id/complete", authenticate, (req, res) => {
 });
 
 /**
- * PATCH /api/work-orders/:id/verify-close (Requester or Admin)
+ * PATCH /api/work-orders/:id/verify-close (Original Requester only)
  * Transition: Completed -> Closed
  */
-router.patch("/:id/verify-close", authenticate, (req, res) => {
+router.patch("/:id/verify-close", authenticate, authorize("Requester"), (req, res) => {
   try {
     const order = getWorkOrderById(req.params.id);
     if (!order) return res.status(404).json({ error: "Work order not found." });
 
-    // Must be original requester or Admin
-    if (req.user.role !== "Admin" && order.requester_id !== req.user.id) {
+    // Must be original requester
+    if (order.requester_id !== req.user.id) {
       return res.status(403).json({ error: "Forbidden: Only the original requester can verify and close this work order." });
     }
 
@@ -471,16 +486,16 @@ router.patch("/:id/verify-close", authenticate, (req, res) => {
 });
 
 /**
- * PATCH /api/work-orders/:id/reopen (Requester or Admin)
+ * PATCH /api/work-orders/:id/reopen (Original Requester only)
  * Transition: Completed -> In Progress (or Closed -> In Progress)
  */
-router.patch("/:id/reopen", authenticate, (req, res) => {
+router.patch("/:id/reopen", authenticate, authorize("Requester"), (req, res) => {
   try {
     const order = getWorkOrderById(req.params.id);
     if (!order) return res.status(404).json({ error: "Work order not found." });
 
-    // Must be original requester or Admin
-    if (req.user.role !== "Admin" && order.requester_id !== req.user.id) {
+    // Must be original requester
+    if (order.requester_id !== req.user.id) {
       return res.status(403).json({ error: "Forbidden: Only the original requester can reopen this work order." });
     }
 

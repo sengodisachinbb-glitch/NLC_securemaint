@@ -142,6 +142,9 @@ export const Dashboard = () => {
           </div>
           <div style={{ fontSize: "0.8rem", color: "#475569" }}>
             {stats.preventiveMaintenance.completedPreventiveOrders} of {stats.preventiveMaintenance.totalPreventiveOrders} routines closed
+            <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
+              (Includes both calendar days &amp; running-hours routines)
+            </span>
           </div>
         </div>
 

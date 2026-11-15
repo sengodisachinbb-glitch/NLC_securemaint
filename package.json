@@ -4,6 +4,7 @@
   "private": true,
   "description": "NLC-SecureMaint root runner",
   "scripts": {
+    "seed": "npm --prefix backend run seed",
     "reset-2fa": "node backend/reset2fa.js",
     "test:api": "npm --prefix backend run test:api"
   }

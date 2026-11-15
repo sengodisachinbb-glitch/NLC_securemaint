@@ -66,13 +66,11 @@ export const WorkOrderDetail = () => {
   if (error && !order) return <div className="alert-error">{error}</div>;
   if (!order) return <p>Work order not found.</p>;
 
-  // Role permissions checks based on current status and user identity
-  const isSupervisorOrAdmin = user?.role === "Supervisor" || user?.role === "Admin";
-  const isManagerOrAdmin = user?.role === "Manager" || user?.role === "Admin";
-  const isAssignedTechOrAdmin =
-    (user?.role === "Technician" && user?.id === order.technician_id) || user?.role === "Admin";
-  const isRequesterOrAdmin =
-    (user?.role === "Requester" && user?.id === order.requester_id) || user?.role === "Admin";
+  // Role permissions checks: Admin is removed from workflow actions
+  const isSupervisor = user?.role === "Supervisor";
+  const isManager = user?.role === "Manager";
+  const isAssignedTech = user?.role === "Technician" && user?.id === order.technician_id;
+  const isOriginalRequester = user?.role === "Requester" && user?.id === order.requester_id;
 
   const getStatusBadgeStyle = (status) => {
     switch (status) {
@@ -226,41 +224,57 @@ export const WorkOrderDetail = () => {
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
           {/* 1. Supervisor Actions on Submitted */}
-          {order.status === "Submitted" && isSupervisorOrAdmin && (
-            <>
-              <button
-                onClick={() => handleAction("approve")}
+          {order.status === "Submitted" && isSupervisor && (
+            order.requester_id === user?.id ? (
+              <span
                 style={{
-                  backgroundColor: "#16a34a",
-                  color: "#ffffff",
-                  padding: "8px 18px",
-                  border: 0,
+                  fontSize: "0.85rem",
+                  color: "#991b1b",
+                  backgroundColor: "#fee2e2",
+                  padding: "8px 14px",
                   borderRadius: "6px",
                   fontWeight: "600",
-                  cursor: "pointer"
+                  border: "1px solid #fca5a5"
                 }}
               >
-                ✓ Approve Work Order
-              </button>
-              <button
-                onClick={() => handleAction("reject", { reason: "Rejected by plant supervisor" })}
-                style={{
-                  backgroundColor: "#dc2626",
-                  color: "#ffffff",
-                  padding: "8px 18px",
-                  border: 0,
-                  borderRadius: "6px",
-                  fontWeight: "600",
-                  cursor: "pointer"
-                }}
-              >
-                ✕ Reject Work Order
-              </button>
-            </>
+                Blocked: You raised this work order. Approval and rejection require another supervisor (segregation of duties).
+              </span>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleAction("approve")}
+                  style={{
+                    backgroundColor: "#16a34a",
+                    color: "#ffffff",
+                    padding: "8px 18px",
+                    border: 0,
+                    borderRadius: "6px",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
+                >
+                  ✓ Approve Work Order
+                </button>
+                <button
+                  onClick={() => handleAction("reject", { reason: "Rejected by plant supervisor" })}
+                  style={{
+                    backgroundColor: "#dc2626",
+                    color: "#ffffff",
+                    padding: "8px 18px",
+                    border: 0,
+                    borderRadius: "6px",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
+                >
+                  ✕ Reject Work Order
+                </button>
+              </>
+            )
           )}
 
           {/* 2. Manager Actions on Approved */}
-          {order.status === "Approved" && isManagerOrAdmin && (
+          {order.status === "Approved" && isManager && (
             <button
               onClick={openAssignModal}
               style={{
@@ -278,7 +292,7 @@ export const WorkOrderDetail = () => {
           )}
 
           {/* 3. Technician Actions on Assigned */}
-          {order.status === "Assigned" && isAssignedTechOrAdmin && (
+          {order.status === "Assigned" && isAssignedTech && (
             <button
               onClick={() => handleAction("start")}
               style={{
@@ -296,7 +310,7 @@ export const WorkOrderDetail = () => {
           )}
 
           {/* 4. Technician Actions on In Progress */}
-          {order.status === "In Progress" && isAssignedTechOrAdmin && (
+          {order.status === "In Progress" && isAssignedTech && (
             <button
               onClick={() => handleAction("complete")}
               style={{
@@ -314,7 +328,7 @@ export const WorkOrderDetail = () => {
           )}
 
           {/* 5. Requester Actions on Completed */}
-          {order.status === "Completed" && isRequesterOrAdmin && (
+          {order.status === "Completed" && isOriginalRequester && (
             <>
               <button
                 onClick={() => handleAction("verify-close")}
@@ -348,7 +362,7 @@ export const WorkOrderDetail = () => {
           )}
 
           {/* 6. Requester Action on Closed */}
-          {order.status === "Closed" && isRequesterOrAdmin && (
+          {order.status === "Closed" && isOriginalRequester && (
             <button
               onClick={() => handleAction("reopen", { reason: "Recurrence observed after closing" })}
               style={{
@@ -368,7 +382,7 @@ export const WorkOrderDetail = () => {
           {/* If no action is currently valid for this role and status */}
           <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
             {order.status === "Closed"
-              ? "This work order has been verified and permanently closed."
+              ? "This work order has been verified and closed. The Requester can reopen it if the fault recurs."
               : order.status === "Rejected"
               ? "This work order was rejected."
               : "No further action pending from your current role."}
@@ -416,7 +430,6 @@ export const WorkOrderDetail = () => {
                   required
                 >
                   <option value="4">Karthik Selvan (Technician - Electrical &amp; Conveyors)</option>
-                  <option value="1">Rajesh Kumar (Admin - Backup Tech)</option>
                 </select>
               </div>
 

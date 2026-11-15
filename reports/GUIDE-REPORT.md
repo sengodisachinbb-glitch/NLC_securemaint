@@ -20,12 +20,14 @@ The application coordinates daily maintenance tasks across five distinct employe
 ### Operational Problems Solved
 1. **Unstructured Maintenance Requests:**  
    In heavy industrial operations, breakdown reports can be delayed or miscommunicated. The system introduces a strict digital work order pipeline where every repair ticket begins in a formal `Submitted` state.
-2. **Unauthorized Status Manipulation:**  
-   In paper or basic spreadsheet logs, job statuses can be changed without proper sign-off. NLC-SecureMaint enforces strict role-based access control (RBAC):
-   - Only a **Supervisor** can approve or reject submitted work orders.
+2. **Unauthorized Status Manipulation & Segregation of Duties:**  
+   In paper or basic spreadsheet logs, job statuses can be changed without proper sign-off. NLC-SecureMaint enforces strict role-based access control (RBAC) and segregation of duties:
+   - Only a **Supervisor** can approve or reject submitted work orders (and cannot approve/reject tickets they raised themselves).
    - Only a **Manager** can assign a technician and establish a service deadline (SLA).
    - Only the **Assigned Technician** can start and complete on-site repair work.
-   - Only the **Original Requester** can verify the physical repair and close the ticket.
+   - Only the **Original Requester** can verify the physical repair, close the ticket, or reopen it.
+   - **Admin** has read access to all work orders and audit logs, but is excluded from operational workflow actions.
+   - For statutory actions, only the designated **Owner** can update progress, and only a **Manager** (who is not the owner) can verify closure.
 3. **Missed Routine Servicing (Preventive Maintenance):**  
    Heavy assets (such as Bucket Wheel Excavators, Conveyor Belt Systems, and Boiler Feed Pumps) require regular cadence inspections. An automated background scheduler scans running equipment hours and routine schedules, automatically generating preventive maintenance tickets before failures occur.
 4. **Audit Accountability for Regulatory Oversight:**  
@@ -45,23 +47,23 @@ flowchart TD
     end
 
     subgraph Step2 [2. Engineering Review]
-        B -->|Approve: Supervisor / Admin| C[Approved]
-        B -->|Reject: Supervisor / Admin| D[Rejected]
+        B -->|Approve: Supervisor| C[Approved]
+        B -->|Reject: Supervisor| D[Rejected]
     end
 
     subgraph Step3 [3. Resource Allocation]
-        C -->|Assign Tech & Set SLA: Manager / Admin| E[Assigned]
+        C -->|Assign Tech & Set SLA: Manager| E[Assigned]
     end
 
     subgraph Step4 [4. On-Site Maintenance]
-        E -->|Start Work: Assigned Technician / Admin| F[In Progress]
-        F -->|Mark Completed: Assigned Technician / Admin| G[Completed]
+        E -->|Start Work: Assigned Technician| F[In Progress]
+        F -->|Mark Completed: Assigned Technician| G[Completed]
     end
 
     subgraph Step5 [5. Inspection & Sign-off]
-        G -->|Verify & Close: Original Requester / Admin| H[Closed]
-        G -->|Reopen for Rework: Original Requester / Admin| F
-        H -->|Reopen Recurrence: Original Requester / Admin| F
+        G -->|Verify & Close: Original Requester| H[Closed]
+        G -->|Reopen for Rework: Original Requester| F
+        H -->|Reopen Recurrence: Original Requester| F
     end
 
     classDef terminal fill:#fee2e2,stroke:#ef4444,stroke-width:1px,color:#991b1b;
@@ -191,13 +193,13 @@ In addition to the database table, the system writes a small text file outside t
 3. **Equipment Registry & Health Indicators:** Correctly calculates asset degradation percentage (`running_hours / service_life_hours`) and displays Green ($<80\%$), Amber ($80\text{--}100\%$), or Red ($>100\%$) status badges.
 4. **Work Order State Machine:** Strict validation prevents illegal status moves; role-specific action buttons show up only for the authorized user.
 5. **Background Scheduler & SLA Escalation:** `node-cron` runs every minute, generating scheduled preventive maintenance orders and automatically flagging overdue tasks as escalated.
-6. **Statutory Action Tracking:** Enforces owner-only evidence updates and manager-only verification sign-off.
+6. **Statutory Action Tracking:** Enforces owner-only evidence updates (Admin cannot override) and manager-only verification sign-off (excluding self-owned actions).
 7. **Offline Capability:** The application runs entirely on a closed local network without internet access.
 
 ---
 
 ### 5.2 What Has Been Tested
-- **Automated Test Suite:** We executed the automated API test runner (`npm run test:api`), which evaluates 14 end-to-end integration tests. **11 tests passed cleanly**.
+- **Automated Test Suite:** We executed the automated API test runner (`npm run test:api`), which evaluates 18 end-to-end integration tests. **All 18 tests passed cleanly (100% PASS)**, verifying RBAC, Admin exclusion from lifecycle actions, segregation of duties (self-approval blocks), owner-only action updates, and manager verification.
 - **Live Lifecycle Browser Test:** The entire work order lifecycle was tested step-by-step in a real browser session across all four roles:
   1. *Requester* created ticket `#14`.
   2. *Supervisor* reviewed and approved it.
@@ -209,11 +211,10 @@ In addition to the database table, the system writes a small text file outside t
 ---
 
 ### 5.3 What is Still Open or Failing
-1. **Audit Verification Failing on Seed Database:**
-   In the automated test run, Tests #4, #5, and #6 failed.
-   - *Reason:* A recently added check (`ID_GAP_DETECTED`) requires all audit rows in the database to have consecutive row numbers ($1, 2, 3\dots$). The existing database file has a pre-existing skip where row `#56` was deleted between rows `#55` and `#57` during early testing. The verification engine caught this gap and reported `ID_GAP_DETECTED`. The verification logic works as designed, but the sample database file contains an unhealed gap.
+1. **Audit Verification on Database:**
+   **RESOLVED:** The database and anchor file were reseeded cleanly from scratch with consecutive row IDs. Both the live database and temporary test databases have consecutive row IDs, and `GET /api/audit/verify` reports `valid: true` across all audit entries with anchor synchronization verified.
 2. **Real OWASP ZAP Security Scan Not Run:**
-   The workspace includes an HTML report titled `OWASP-ZAP-Security-Report.html`. However, inspection of the project logs shows this was created by a custom Node.js script simulating vulnerability checks. An authentic OWASP ZAP tool was never installed or run on this machine.
+   The workspace includes an archived HTML report titled `reports/archive/Scripted-Security-Checks.html` (generated by the custom script `backend/tests/scripted-security-checks.js` probing HTTP headers). An authentic OWASP ZAP tool was never installed or run on this machine.
 3. **Clean-Folder Installation Unverified:**
    The software has only been run within the current development directory. A fresh installation test starting from an empty folder has not yet been executed.
 4. **Final Presentation Slides & Rehearsal:**

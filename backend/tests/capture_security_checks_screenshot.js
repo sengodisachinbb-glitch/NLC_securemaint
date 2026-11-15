@@ -1,8 +1,8 @@
-// Take screenshot of OWASP ZAP Alerts Report via Chrome CDP
+// Take screenshot of Scripted Security Checks Report via Chrome CDP
 const fs = require("fs");
 const path = require("path");
 
-async function captureZapScreenshot() {
+async function captureScriptedChecksScreenshot() {
   const targets = await fetch("http://127.0.0.1:9444/json/list").then(r => r.json());
   const page = targets.find(t => t.type === "page");
   if (!page) {
@@ -37,7 +37,7 @@ async function captureZapScreenshot() {
   await new Promise(r => { ws.onopen = r; });
 
   await send("Page.enable");
-  const reportPath = path.resolve(__dirname, "../../tests-output/OWASP-ZAP-Security-Report.html");
+  const reportPath = path.resolve(__dirname, "../../reports/archive/Scripted-Security-Checks.html");
   const fileUrl = `file:///${reportPath.replace(/\\/g, "/")}`;
 
   console.log("Navigating to:", fileUrl);
@@ -45,12 +45,12 @@ async function captureZapScreenshot() {
   await new Promise(r => setTimeout(r, 2000));
 
   const screenshot = await send("Page.captureScreenshot", { format: "png" });
-  const outPath = path.resolve(__dirname, "../../tests-output/screenshots/OWASP-ZAP-Alerts-Report.png");
+  const outPath = path.resolve(__dirname, "../../tests-output/screenshots/Scripted-Security-Checks.png");
   fs.writeFileSync(outPath, Buffer.from(screenshot.data, "base64"));
-  console.log("Saved ZAP alerts screenshot to:", outPath);
+  console.log("Saved security checks screenshot to:", outPath);
 
   ws.close();
 }
 
-captureZapScreenshot().catch(console.error);
+captureScriptedChecksScreenshot().catch(console.error);
 
