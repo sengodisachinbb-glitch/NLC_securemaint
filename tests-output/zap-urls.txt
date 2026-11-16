@@ -1,0 +1,11 @@
+http://localhost:5000/api/health
+http://localhost:5000/api/auth/me
+http://localhost:5000/api/equipment
+http://localhost:5000/api/audit/verify
+http://localhost:5000/api/audit
+http://localhost:5000/api/work-orders
+http://localhost:5000/api/work-orders/1
+http://localhost:5000/api/pm-schedules
+http://localhost:5000/api/actions
+http://localhost:5000/api/actions/1
+http://localhost:5000/api/dashboard/stats

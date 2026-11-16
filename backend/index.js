@@ -20,8 +20,25 @@ const rateLimit = require("express-rate-limit");
 
 const app = express();
 
-// Security HTTP headers
-app.use(helmet());
+// Security HTTP headers with strict, non-inheriting CSP directives
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        formAction: ["'self'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'self'"],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'"],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", "https:", "'unsafe-inline'"],
+        fontSrc: ["'self'", "https:", "data:"],
+        imgSrc: ["'self'", "data:"]
+      }
+    }
+  })
+);
 
 // Tightened CORS configuration restricting access to designated frontend origins
 const allowedOrigins = [
