@@ -1,5 +1,6 @@
 // Executive Plant Maintenance Dashboard (/dashboard)
 // Visualizes operational KPIs, equipment life distribution, and work order bottlenecks using Recharts
+// Styled with Apple storefront minimalist aesthetic: high whitespace, editorial typography, and pristine card surfaces
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -54,14 +55,14 @@ export const Dashboard = () => {
 
   if (!canAccess) {
     return (
-      <div className="card" style={{ maxWidth: "600px", margin: "40px auto", textAlign: "center" }}>
-        <h2 style={{ fontSize: "1.3rem", fontWeight: "700", color: "#0a2540", marginBottom: "8px" }}>
+      <div className="card" style={{ maxWidth: "560px", margin: "48px auto", textAlign: "center" }}>
+        <h2 style={{ fontSize: "1.35rem", fontWeight: "700", color: "#1D1D1F", marginBottom: "8px" }}>
           Executive Plant Dashboard
         </h2>
-        <p style={{ color: "#64748b", marginBottom: "16px" }}>
+        <p style={{ color: "#6E6E73", marginBottom: "16px" }}>
           The KPI analytics dashboard is reserved for <strong>Manager</strong> and <strong>Admin</strong> roles.
         </p>
-        <p style={{ fontSize: "0.85rem", color: "#94a3b8" }}>
+        <p style={{ fontSize: "0.85rem", color: "#86868B" }}>
           You are currently signed in as <strong>{user?.name}</strong> with role <strong>{user?.role}</strong>.
           You can manage your work orders and equipment in their respective navigation tabs.
         </p>
@@ -69,7 +70,7 @@ export const Dashboard = () => {
     );
   }
 
-  if (loading) return <p>Loading executive plant metrics...</p>;
+  if (loading) return <p style={{ color: "#6E6E73", padding: "20px 0" }}>Loading executive plant metrics...</p>;
   if (error) return <div className="alert-error">{error}</div>;
   if (!stats) return null;
 
@@ -81,123 +82,138 @@ export const Dashboard = () => {
 
   // Prepare data for Equipment Health Pie Chart
   const equipmentPieData = [
-    { name: "Green (<80% Life)", value: stats.equipmentHealth.green, color: "#10b981" },
-    { name: "Amber (80-100% Life)", value: stats.equipmentHealth.amber, color: "#f59e0b" },
-    { name: "Red (>100% Critical)", value: stats.equipmentHealth.red, color: "#ef4444" }
+    { name: "Green (<80% Life)", value: stats.equipmentHealth.green, color: "#15803D" },
+    { name: "Amber (80-100% Life)", value: stats.equipmentHealth.amber, color: "#B45309" },
+    { name: "Red (>100% Critical)", value: stats.equipmentHealth.red, color: "#B91C1C" }
   ].filter((item) => item.value > 0);
 
   return (
     <div>
-      <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "1.6rem", fontWeight: "700", color: "#111827" }}>
-          Executive Plant Operations &amp; Safety Dashboard
-        </h1>
-        <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
-          Aggregated preventive maintenance, equipment degradation, and regulatory compliance metrics
-        </p>
+      {/* Duo-Color Executive Operations Banner */}
+      <div className="card-hero-blue">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <h1 style={{ fontSize: "1.75rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#FFFFFF", marginBottom: "6px" }}>
+              NLCIL Operations &amp; Safety Executive Dashboard
+            </h1>
+            <p style={{ color: "rgba(255, 255, 255, 0.88)", fontSize: "0.925rem", margin: 0, maxWidth: "680px" }}>
+              Real-time monitoring of heavy equipment degradation, preventive servicing compliance, and statutory safety action items
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+            <div style={{ textAlign: "right", borderRight: "1px solid rgba(255, 255, 255, 0.2)", paddingRight: "20px" }}>
+              <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.75)", textTransform: "uppercase", fontWeight: "600", letterSpacing: "0.03em" }}>Plant Assets</div>
+              <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#FFFFFF" }}>{stats.equipmentHealth.total}</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.75)", textTransform: "uppercase", fontWeight: "600", letterSpacing: "0.03em" }}>PM Compliance</div>
+              <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#FFFFFF" }}>{stats.preventiveMaintenance.compliancePercentage}%</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* KPI Cards Row */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-          gap: "16px",
-          marginBottom: "24px"
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "18px",
+          marginBottom: "28px"
         }}
       >
         {/* Card 1: Work Orders Total */}
-        <div className="card" style={{ borderLeft: "4px solid #2563eb" }}>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
+        <div className="card" style={{ borderTop: "4px solid #2F2484" }}>
+          <div style={{ fontSize: "0.775rem", color: "#2F2484", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             Total Work Orders
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#0f172a", margin: "4px 0" }}>
+          <div style={{ fontSize: "2.2rem", fontWeight: "800", letterSpacing: "-0.03em", color: "#1D1D1F", margin: "6px 0 4px 0" }}>
             {stats.workOrders.total}
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#475569" }}>
+          <div style={{ fontSize: "0.8rem", color: "#5C5C6A" }}>
             {stats.workOrders.byStatus["In Progress"]} in progress &bull; {stats.workOrders.byStatus["Closed"]} closed
           </div>
         </div>
 
         {/* Card 2: Overdue & Escalated Work Orders */}
-        <div className="card" style={{ borderLeft: "4px solid #ef4444" }}>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
+        <div className="card" style={{ borderTop: stats.workOrders.escalated > 0 ? "4px solid #B91C1C" : "4px solid #2F2484" }}>
+          <div style={{ fontSize: "0.775rem", color: stats.workOrders.escalated > 0 ? "#B91C1C" : "#2F2484", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             SLA Breached / Escalated
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#dc2626", margin: "4px 0" }}>
+          <div style={{ fontSize: "2.2rem", fontWeight: "800", letterSpacing: "-0.03em", color: stats.workOrders.escalated > 0 ? "#B91C1C" : "#1D1D1F", margin: "6px 0 4px 0" }}>
             {stats.workOrders.escalated}
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#b91c1c" }}>
+          <div style={{ fontSize: "0.8rem", color: stats.workOrders.overdue > 0 ? "#B91C1C" : "#5C5C6A" }}>
             {stats.workOrders.overdue} overdue SLA orders
           </div>
         </div>
 
         {/* Card 3: PM Compliance Rate */}
-        <div className="card" style={{ borderLeft: "4px solid #10b981" }}>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
+        <div className="card" style={{ borderTop: "4px solid #2F2484" }}>
+          <div style={{ fontSize: "0.775rem", color: "#2F2484", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             PM Compliance Rate
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#059669", margin: "4px 0" }}>
+          <div style={{ fontSize: "2.2rem", fontWeight: "800", letterSpacing: "-0.03em", color: "#15803D", margin: "6px 0 4px 0" }}>
             {stats.preventiveMaintenance.compliancePercentage}%
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#475569" }}>
+          <div style={{ fontSize: "0.8rem", color: "#5C5C6A" }}>
             {stats.preventiveMaintenance.completedPreventiveOrders} of {stats.preventiveMaintenance.totalPreventiveOrders} routines closed
-            <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
-              (Includes both calendar days &amp; running-hours routines)
+            <span style={{ display: "block", fontSize: "0.75rem", color: "#8A8A9E", marginTop: "2px" }}>
+              (Calendar &amp; running-hours routines)
             </span>
           </div>
         </div>
 
         {/* Card 4: Equipment Degradation */}
-        <div className="card" style={{ borderLeft: "4px solid #f59e0b" }}>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
+        <div className="card" style={{ borderTop: "4px solid #2F2484" }}>
+          <div style={{ fontSize: "0.775rem", color: "#2F2484", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             Equipment Life Status
           </div>
-          <div style={{ display: "flex", gap: "8px", margin: "8px 0" }}>
-            <span style={{ backgroundColor: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "4px", fontSize: "0.9rem", fontWeight: "700" }}>
+          <div style={{ display: "flex", gap: "8px", margin: "10px 0 8px 0" }}>
+            <span className="status-pill" style={{ backgroundColor: "#DCFCE7", color: "#15803D", border: "1px solid #86EFAC" }}>
               {stats.equipmentHealth.green} Green
             </span>
-            <span style={{ backgroundColor: "#fef3c7", color: "#b45309", padding: "2px 8px", borderRadius: "4px", fontSize: "0.9rem", fontWeight: "700" }}>
+            <span className="status-pill" style={{ backgroundColor: "#FEF3C7", color: "#B45309", border: "1px solid #FDE68A" }}>
               {stats.equipmentHealth.amber} Amber
             </span>
-            <span style={{ backgroundColor: "#fee2e2", color: "#b91c1c", padding: "2px 8px", borderRadius: "4px", fontSize: "0.9rem", fontWeight: "700" }}>
+            <span className="status-pill" style={{ backgroundColor: "#FEE2E2", color: "#B91C1C", border: "1px solid #FCA5A5" }}>
               {stats.equipmentHealth.red} Red
             </span>
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#475569" }}>
+          <div style={{ fontSize: "0.8rem", color: "#5C5C6A" }}>
             {stats.equipmentHealth.total} total plant assets
           </div>
         </div>
 
         {/* Card 5: Overdue Actions */}
-        <div className="card" style={{ borderLeft: "4px solid #8b5cf6" }}>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
+        <div className="card" style={{ borderTop: "4px solid #2F2484" }}>
+          <div style={{ fontSize: "0.775rem", color: "#2F2484", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             Compliance Actions
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: "800", color: stats.complianceActions.overdue > 0 ? "#dc2626" : "#4338ca", margin: "4px 0" }}>
+          <div style={{ fontSize: "2.2rem", fontWeight: "800", letterSpacing: "-0.03em", color: stats.complianceActions.overdue > 0 ? "#B91C1C" : "#2F2484", margin: "6px 0 4px 0" }}>
             {stats.complianceActions.overdue}
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#475569" }}>
+          <div style={{ fontSize: "0.8rem", color: "#5C5C6A" }}>
             Overdue out of {stats.complianceActions.total} total items
           </div>
         </div>
       </div>
 
       {/* Visual Analytics Charts Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(440px, 1fr))", gap: "24px", marginBottom: "28px" }}>
         {/* Chart 1: Work Orders by Status */}
         <div className="card">
-          <h2 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "16px", color: "#1e293b" }}>
+          <h2 style={{ fontSize: "1.2rem", fontWeight: "600", marginBottom: "20px", color: "#1D1D1F" }}>
             Work Orders Lifecycle Distribution
           </h2>
           <div style={{ width: "100%", height: 300 }}>
             <ResponsiveContainer>
               <BarChart data={statusChartData} margin={{ top: 10, right: 20, left: -10, bottom: 25 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="status" angle={-25} textAnchor="end" interval={0} fontSize={11} stroke="#64748b" />
-                <YAxis allowDecimals={false} fontSize={12} stroke="#64748b" />
-                <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-                <Bar dataKey="count" fill="#0a2540" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
+                <XAxis dataKey="status" angle={-25} textAnchor="end" interval={0} fontSize={11} stroke="#6E6E73" />
+                <YAxis allowDecimals={false} fontSize={12} stroke="#6E6E73" />
+                <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={{ borderRadius: "10px", border: "1px solid #D2D2D7" }} />
+                <Bar dataKey="count" fill="#2F2484" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -205,7 +221,7 @@ export const Dashboard = () => {
 
         {/* Chart 2: Equipment Life Degradation */}
         <div className="card">
-          <h2 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "16px", color: "#1e293b" }}>
+          <h2 style={{ fontSize: "1.2rem", fontWeight: "600", marginBottom: "20px", color: "#1D1D1F" }}>
             Asset Life Health Breakdown
           </h2>
           <div style={{ width: "100%", height: 300 }}>
@@ -226,12 +242,12 @@ export const Dashboard = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ borderRadius: "10px", border: "1px solid #D2D2D7" }} />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p style={{ textAlign: "center", color: "#64748b", marginTop: "100px" }}>
+              <p style={{ textAlign: "center", color: "#6E6E73", marginTop: "100px" }}>
                 No equipment data to display
               </p>
             )}
@@ -241,4 +257,3 @@ export const Dashboard = () => {
     </div>
   );
 };
-

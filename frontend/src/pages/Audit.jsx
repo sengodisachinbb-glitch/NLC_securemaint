@@ -1,5 +1,6 @@
 // Admin Tamper-Evident Audit Trail Page (/audit)
 // Provides audit trail inspection and on-demand cryptographic hash chain verification (Admin only)
+// Free of emojis, using clean typographic hierarchy and Apple-style visual cards
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -79,11 +80,11 @@ export const Audit = () => {
 
   if (!isAdmin) {
     return (
-      <div className="card" style={{ maxWidth: "600px", margin: "40px auto", textAlign: "center" }}>
-        <h2 style={{ fontSize: "1.3rem", fontWeight: "700", color: "#dc2626", marginBottom: "8px" }}>
+      <div className="card" style={{ maxWidth: "560px", margin: "48px auto", textAlign: "center" }}>
+        <h2 style={{ fontSize: "1.3rem", fontWeight: "700", color: "#B91C1C", marginBottom: "8px" }}>
           Restricted Security Zone
         </h2>
-        <p style={{ color: "#64748b" }}>
+        <p style={{ color: "#6E6E73" }}>
           The cryptographic audit trail and hash chain verification are strictly restricted to <strong>Admin</strong> users.
         </p>
       </div>
@@ -92,13 +93,13 @@ export const Audit = () => {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
         <div>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: "700", color: "#111827" }}>
+          <h1 style={{ fontSize: "1.85rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#2F2484" }}>
             Cryptographic Audit Trail
           </h1>
-          <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
-            Tamper-evident blockchain-style SHA-256 hash log of all critical system actions
+          <p style={{ color: "#6E6E73", fontSize: "0.925rem", marginTop: "4px" }}>
+            Tamper-evident SHA-256 hash ledger verifying end-to-end event sequence integrity
           </p>
         </div>
 
@@ -107,83 +108,80 @@ export const Audit = () => {
           disabled={verifying}
           className="btn-primary"
           style={{
-            width: "auto",
-            padding: "9px 20px",
-            backgroundColor: "#059669",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px"
+            backgroundColor: "#2F2484",
+            padding: "10px 22px"
           }}
         >
-          {verifying ? "Recomputing SHA-256 Chain..." : "🔒 Verify Chain Integrity"}
+          {verifying ? "Recomputing SHA-256 Chain..." : "Verify Chain Integrity"}
         </button>
       </div>
 
       {/* Separate anchor file Status Card */}
       <div
-        className="card"
+        className="card-secondary"
         style={{
-          marginBottom: "20px",
-          background: "#f8fafc",
-          border: "1px solid #cbd5e1",
-          padding: "18px 20px"
+          marginBottom: "24px",
+          padding: "24px 28px"
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "20px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "1.25rem" }}>⚓</span>
-              <h3 style={{ fontSize: "1.05rem", fontWeight: "700", color: "var(--nlc-primary)", margin: 0 }}>
-                Separate anchor file
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "700", color: "#2F2484", margin: 0 }}>
+                Cryptographic Anchor State
               </h3>
-              <code style={{ fontSize: "0.75rem", background: "#e2e8f0", padding: "2px 6px", borderRadius: "4px" }}>
+              <code style={{ fontSize: "0.75rem", background: "#FFFFFF", border: "1px solid #D1CCED", padding: "2px 8px", borderRadius: "4px", color: "#2F2484", fontWeight: "600" }}>
                 backend/anchor.json
               </code>
               <span
+                className="status-pill"
                 style={{
-                  fontSize: "0.75rem",
-                  fontWeight: "700",
-                  padding: "3px 10px",
-                  borderRadius: "9999px",
                   backgroundColor: verificationResult
                     ? verificationResult.valid
-                      ? "#dcfce7"
-                      : "#fee2e2"
-                    : "#e0f2fe",
+                      ? "#DCFCE7"
+                      : "#FEE2E2"
+                    : "#EDEAF8",
                   color: verificationResult
                     ? verificationResult.valid
-                      ? "#15803d"
-                      : "#b91c1c"
-                    : "#0369a1"
+                      ? "#15803D"
+                      : "#B91C1C"
+                    : "#2F2484",
+                  border: `1px solid ${
+                    verificationResult
+                      ? verificationResult.valid
+                        ? "#86EFAC"
+                        : "#FCA5A5"
+                      : "#D1CCED"
+                  }`
                 }}
               >
                 {verificationResult
                   ? verificationResult.valid
-                    ? "✓ ANCHOR SYNCHRONIZED"
-                    : "⚠ ANCHOR MISMATCH"
+                    ? "ANCHOR SYNCHRONIZED"
+                    : "ANCHOR MISMATCH"
                   : "FILE-BACKED ANCHOR"}
               </span>
             </div>
-            <p style={{ fontSize: "0.825rem", color: "#64748b", marginTop: "6px", maxWidth: "600px" }}>
+            <p style={{ fontSize: "0.85rem", color: "#5C5C6A", marginTop: "8px", maxWidth: "620px" }}>
               Independent state stored outside SQLite. Ensures deleted tail rows (truncation attacks) and row rewrites cannot be concealed by tampering with the database.
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "28px", alignItems: "center" }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#64748b", fontWeight: "600" }}>
+              <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#5C5C6A", fontWeight: "700", letterSpacing: "0.03em" }}>
                 Anchor Row ID
               </div>
-              <div style={{ fontSize: "1.4rem", fontWeight: "800", color: "#0f172a" }}>
+              <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#2F2484", letterSpacing: "-0.02em" }}>
                 #{anchor?.row_id ?? (logs[0]?.id || 0)}
               </div>
             </div>
 
-            <div style={{ textAlign: "right", borderLeft: "1px solid #cbd5e1", paddingLeft: "20px" }}>
-              <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#64748b", fontWeight: "600" }}>
-                Database Log Count
+            <div style={{ textAlign: "right", borderLeft: "1px solid #DCDCE6", paddingLeft: "24px" }}>
+              <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#5C5C6A", fontWeight: "700", letterSpacing: "0.03em" }}>
+                Ledger Record Count
               </div>
-              <div style={{ fontSize: "1.4rem", fontWeight: "800", color: "#0f172a" }}>
+              <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#2F2484", letterSpacing: "-0.02em" }}>
                 {logs.length}
               </div>
             </div>
@@ -193,43 +191,42 @@ export const Audit = () => {
         {/* Highlighted Anchor Hash Display for Screenshotting & Note-Taking */}
         <div
           style={{
-            marginTop: "14px",
-            background: "#ffffff",
-            padding: "12px 16px",
-            borderRadius: "6px",
-            border: "1px solid #e2e8f0"
+            marginTop: "18px",
+            background: "#FFFFFF",
+            padding: "16px 20px",
+            borderRadius: "12px",
+            border: "1px solid #D2D2D7"
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#475569", letterSpacing: "0.5px" }}>
-              OFFICIAL ANCHOR SHA-256 HASH (FOR AUDITOR NOTEBOOK &amp; SCREENSHOTS):
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#6E6E73", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              Official Anchor SHA-256 Hash (Auditor Reference):
             </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ fontSize: "0.775rem", color: "#86868B" }}>
                 Last Anchored: {anchor?.timestamp ? new Date(anchor.timestamp).toLocaleString() : "-"}
               </span>
               <button
                 type="button"
                 onClick={copyAnchorHash}
                 className="btn-quick-fill"
-                style={{ fontSize: "0.7rem", padding: "3px 8px" }}
               >
-                {copied ? "Copied!" : "Copy Hash"}
+                {copied ? "Copied" : "Copy Hash"}
               </button>
             </div>
           </div>
 
           <div
             style={{
-              fontFamily: "monospace",
-              fontSize: "0.875rem",
-              fontWeight: "700",
-              color: "#0a2540",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              fontSize: "0.85rem",
+              fontWeight: "600",
+              color: "#1D1D1F",
               wordBreak: "break-all",
-              backgroundColor: "#f8fafc",
-              padding: "8px 12px",
-              borderRadius: "4px",
-              border: "1px solid #e2e8f0",
+              backgroundColor: "#F5F5F7",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #E5E5EA",
               userSelect: "all"
             }}
           >
@@ -242,20 +239,20 @@ export const Audit = () => {
       {verificationResult && (
         <div
           style={{
-            padding: "16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            border: verificationResult.valid ? "1px solid #86efac" : "2px solid #ef4444",
-            backgroundColor: verificationResult.valid ? "#ecfdf5" : "#fef2f2",
-            color: verificationResult.valid ? "#065f46" : "#991b1b"
+            padding: "18px 24px",
+            borderRadius: "14px",
+            marginBottom: "24px",
+            border: verificationResult.valid ? "1px solid #86EFAC" : "1px solid #FCA5A5",
+            backgroundColor: verificationResult.valid ? "#DCFCE7" : "#FEE2E2",
+            color: verificationResult.valid ? "#15803D" : "#B91C1C"
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", fontSize: "1rem" }}>
-            <span>{verificationResult.valid ? "✓ INTEGRITY VERIFIED" : "⚠ TAMPERING DETECTED"}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", fontSize: "0.95rem", letterSpacing: "0.02em" }}>
+            <span>{verificationResult.valid ? "INTEGRITY VERIFIED" : "TAMPERING DETECTED"}</span>
           </div>
-          <p style={{ marginTop: "4px", fontSize: "0.9rem" }}>{verificationResult.message}</p>
+          <p style={{ marginTop: "4px", fontSize: "0.875rem", color: "inherit" }}>{verificationResult.message}</p>
           {verificationResult.brokenRowId && (
-            <p style={{ marginTop: "4px", fontSize: "0.85rem", fontWeight: "600" }}>
+            <p style={{ marginTop: "6px", fontSize: "0.825rem", fontWeight: "600" }}>
               Broken Chain Anchor Row ID: #{verificationResult.brokenRowId} &bull; Reason: {verificationResult.reason}
             </p>
           )}
@@ -265,77 +262,81 @@ export const Audit = () => {
       {error && <div className="alert-error">{error}</div>}
 
       {loading ? (
-        <p>Loading audit ledger...</p>
+        <p style={{ color: "#6E6E73", padding: "20px 0" }}>Loading audit ledger...</p>
       ) : logs.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: "40px" }}>
-          <p style={{ color: "#6b7280" }}>Audit log ledger is empty.</p>
+        <div className="card" style={{ textAlign: "center", padding: "48px 20px" }}>
+          <p style={{ color: "#6E6E73" }}>Audit log ledger is empty.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
+        <div className="table-container">
+          <table>
             <thead>
-              <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "10px 14px" }}>ID</th>
-                <th style={{ padding: "10px 14px" }}>Timestamp</th>
-                <th style={{ padding: "10px 14px" }}>Action</th>
-                <th style={{ padding: "10px 14px" }}>User</th>
-                <th style={{ padding: "10px 14px" }}>Entity</th>
-                <th style={{ padding: "10px 14px" }}>Details</th>
-                <th style={{ padding: "10px 14px" }}>Previous Hash</th>
-                <th style={{ padding: "10px 14px" }}>Row SHA-256 Hash</th>
+              <tr>
+                <th>ID</th>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>User</th>
+                <th>Entity</th>
+                <th>Details</th>
+                <th>Previous Hash</th>
+                <th>Row SHA-256 Hash</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((log) => (
-                <tr key={log.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "10px 14px", fontWeight: "700" }}>#{log.id}</td>
-                  <td style={{ padding: "10px 14px", whiteSpace: "nowrap", color: "#64748b" }}>
+                <tr key={log.id}>
+                  <td style={{ fontWeight: "700", color: "#1D1D1F" }}>#{log.id}</td>
+                  <td style={{ whiteSpace: "nowrap", color: "#6E6E73" }}>
                     {new Date(log.timestamp).toLocaleString()}
                   </td>
-                  <td style={{ padding: "10px 14px" }}>
+                  <td>
                     <span
+                      className="status-pill"
                       style={{
                         backgroundColor: log.action.includes("FAILED") || log.action.includes("ESCALATED")
-                          ? "#fee2e2"
+                          ? "#FEE2E2"
                           : log.action.includes("SUCCESS") || log.action.includes("APPROVED") || log.action.includes("VERIFIED")
-                          ? "#dcfce7"
-                          : "#f1f5f9",
+                          ? "#DCFCE7"
+                          : "#F5F5F7",
                         color: log.action.includes("FAILED") || log.action.includes("ESCALATED")
-                          ? "#b91c1c"
+                          ? "#B91C1C"
                           : log.action.includes("SUCCESS") || log.action.includes("APPROVED") || log.action.includes("VERIFIED")
-                          ? "#15803d"
-                          : "#0f172a",
-                        padding: "2px 8px",
-                        borderRadius: "4px",
-                        fontWeight: "700",
-                        fontSize: "0.75rem"
+                          ? "#15803D"
+                          : "#1D1D1F",
+                        border: `1px solid ${
+                          log.action.includes("FAILED") || log.action.includes("ESCALATED")
+                            ? "#FCA5A5"
+                            : log.action.includes("SUCCESS") || log.action.includes("APPROVED") || log.action.includes("VERIFIED")
+                            ? "#86EFAC"
+                            : "#D2D2D7"
+                        }`
                       }}
                     >
                       {log.action}
                     </span>
                   </td>
-                  <td style={{ padding: "10px 14px" }}>
+                  <td>
                     {log.user_name ? (
                       <div>
-                        <div style={{ fontWeight: "600" }}>{log.user_name}</div>
-                        <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{log.user_email}</div>
+                        <div style={{ fontWeight: "600", color: "#1D1D1F" }}>{log.user_name}</div>
+                        <div style={{ fontSize: "0.775rem", color: "#6E6E73" }}>{log.user_email}</div>
                       </div>
                     ) : (
-                      <span style={{ color: "#94a3b8" }}>System / Anonymous</span>
+                      <span style={{ color: "#86868B" }}>System / Anonymous</span>
                     )}
                   </td>
-                  <td style={{ padding: "10px 14px", textTransform: "capitalize" }}>{log.entity}</td>
-                  <td style={{ padding: "10px 14px", maxWidth: "200px", fontFamily: "monospace", fontSize: "0.75rem", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <td style={{ textTransform: "capitalize", color: "#1D1D1F" }}>{log.entity}</td>
+                  <td style={{ maxWidth: "220px", fontFamily: "ui-monospace, monospace", fontSize: "0.75rem", overflow: "hidden", textOverflow: "ellipsis", color: "#6E6E73" }}>
                     {typeof log.details === "object" ? JSON.stringify(log.details) : log.details}
                   </td>
-                  <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: "0.7rem", color: "#64748b" }}>
+                  <td style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.75rem", color: "#6E6E73" }}>
                     {log.prev_hash === "GENESIS" ? (
-                      <strong style={{ color: "#2563eb" }}>GENESIS</strong>
+                      <strong style={{ color: "#2F2484" }}>GENESIS</strong>
                     ) : (
                       `${log.prev_hash.slice(0, 8)}...${log.prev_hash.slice(-6)}`
                     )}
                   </td>
-                  <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: "0.7rem", color: "#0f172a", fontWeight: "600" }}>
+                  <td style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.75rem", color: "#1D1D1F", fontWeight: "600" }}>
                     {log.hash ? `${log.hash.slice(0, 8)}...${log.hash.slice(-6)}` : "-"}
                   </td>
                 </tr>
@@ -347,4 +348,3 @@ export const Audit = () => {
     </div>
   );
 };
-

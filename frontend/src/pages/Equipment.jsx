@@ -1,5 +1,6 @@
 // Equipment Registry Page (/equipment)
 // Displays equipment inventory with lifecycle status badges and add/edit capabilities for Admin/Manager
+// Styled with Apple storefront minimalist design: clean typography, pill badges, and refined modal panels
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -109,94 +110,80 @@ export const Equipment = () => {
   const getLifeBadgeStyle = (status) => {
     switch (status) {
       case "Green":
-        return { backgroundColor: "#dcfce7", color: "#15803d", border: "1px solid #86efac" };
+        return { backgroundColor: "#DCFCE7", color: "#15803D", border: "1px solid #86EFAC" };
       case "Amber":
-        return { backgroundColor: "#fef3c7", color: "#b45309", border: "1px solid #fde68a" };
+        return { backgroundColor: "#FEF3C7", color: "#B45309", border: "1px solid #FDE68A" };
       case "Red":
-        return { backgroundColor: "#fee2e2", color: "#b91c1c", border: "1px solid #fca5a5" };
+        return { backgroundColor: "#FEE2E2", color: "#B91C1C", border: "1px solid #FCA5A5" };
       default:
-        return { backgroundColor: "#f3f4f6", color: "#374151" };
+        return { backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7" };
     }
   };
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
         <div>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: "700", color: "#111827" }}>Equipment Registry</h1>
-          <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
-            Real-time equipment lifecycle metrics and operational running hours
+          <h1 style={{ fontSize: "1.85rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#2F2484" }}>
+            Equipment Registry
+          </h1>
+          <p style={{ color: "#6E6E73", fontSize: "0.925rem", marginTop: "4px" }}>
+            Industrial asset registry, running hours tracking, and service life degradation status
           </p>
         </div>
 
         {canManage && (
-          <button onClick={openAddModal} className="btn-primary" style={{ width: "auto", padding: "8px 18px" }}>
+          <button onClick={openAddModal} className="btn-primary">
             + Add Equipment
           </button>
         )}
       </div>
 
       {error && <div className="alert-error">{error}</div>}
-      {success && (
-        <div style={{ backgroundColor: "#dcfce7", color: "#15803d", padding: "10px 14px", borderRadius: "6px", marginBottom: "16px", border: "1px solid #86efac" }}>
-          {success}
-        </div>
-      )}
+      {success && <div className="alert-success">{success}</div>}
 
       {loading ? (
-        <p>Loading equipment assets...</p>
+        <p style={{ color: "#6E6E73", padding: "20px 0" }}>Loading equipment assets...</p>
       ) : (
-        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+        <div className="table-container">
+          <table>
             <thead>
-              <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "12px 16px" }}>Code</th>
-                <th style={{ padding: "12px 16px" }}>Name</th>
-                <th style={{ padding: "12px 16px" }}>Type</th>
-                <th style={{ padding: "12px 16px" }}>Location</th>
-                <th style={{ padding: "12px 16px" }}>Section</th>
-                <th style={{ padding: "12px 16px" }}>Running Hrs</th>
-                <th style={{ padding: "12px 16px" }}>Service Life</th>
-                <th style={{ padding: "12px 16px" }}>Life Status</th>
-                {canManage && <th style={{ padding: "12px 16px", textAlign: "center" }}>Actions</th>}
+              <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Location</th>
+                <th>Section</th>
+                <th>Running Hours</th>
+                <th>Service Life</th>
+                <th>Life Status</th>
+                {canManage && <th style={{ textAlign: "center" }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {equipmentList.map((item) => (
-                <tr key={item.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "12px 16px", fontWeight: "600", color: "#0a2540" }}>{item.code}</td>
-                  <td style={{ padding: "12px 16px" }}>{item.name}</td>
-                  <td style={{ padding: "12px 16px" }}>{item.type}</td>
-                  <td style={{ padding: "12px 16px" }}>{item.location}</td>
-                  <td style={{ padding: "12px 16px" }}>{item.section}</td>
-                  <td style={{ padding: "12px 16px" }}>{item.running_hours.toLocaleString()} hrs</td>
-                  <td style={{ padding: "12px 16px" }}>{item.service_life_hours.toLocaleString()} hrs</td>
-                  <td style={{ padding: "12px 16px" }}>
+                <tr key={item.id}>
+                  <td style={{ fontWeight: "700", color: "#1D1D1F" }}>{item.code}</td>
+                  <td style={{ fontWeight: "500", color: "#1D1D1F" }}>{item.name}</td>
+                  <td style={{ color: "#6E6E73" }}>{item.type}</td>
+                  <td style={{ color: "#1D1D1F" }}>{item.location}</td>
+                  <td style={{ color: "#6E6E73" }}>{item.section}</td>
+                  <td style={{ color: "#1D1D1F" }}>{item.running_hours.toLocaleString()} hrs</td>
+                  <td style={{ color: "#6E6E73" }}>{item.service_life_hours.toLocaleString()} hrs</td>
+                  <td>
                     <span
-                      style={{
-                        padding: "3px 10px",
-                        borderRadius: "9999px",
-                        fontSize: "0.8rem",
-                        fontWeight: "700",
-                        display: "inline-block",
-                        ...getLifeBadgeStyle(item.lifeStatus)
-                      }}
+                      className="status-pill"
+                      style={getLifeBadgeStyle(item.lifeStatus)}
                     >
                       {item.lifeStatus} ({Math.round((item.running_hours / item.service_life_hours) * 100)}%)
                     </span>
                   </td>
                   {canManage && (
-                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                    <td style={{ textAlign: "center" }}>
                       <button
                         onClick={() => openEditModal(item)}
-                        style={{
-                          backgroundColor: "#f3f4f6",
-                          border: "1px solid #d1d5db",
-                          borderRadius: "4px",
-                          padding: "4px 10px",
-                          cursor: "pointer",
-                          fontSize: "0.8rem"
-                        }}
+                        className="btn-quick-fill"
+                        style={{ padding: "4px 12px" }}
                       >
                         Edit
                       </button>
@@ -211,23 +198,9 @@ export const Equipment = () => {
 
       {/* Add / Edit Equipment Modal */}
       {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div className="card" style={{ width: "100%", maxWidth: "520px", maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "16px" }}>
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxHeight: "90vh", overflowY: "auto" }}>
+            <h2 style={{ fontSize: "1.35rem", fontWeight: "700", letterSpacing: "-0.025em", marginBottom: "20px" }}>
               {isEditing ? `Edit Equipment (${formData.code})` : "Add New Equipment"}
             </h2>
 
@@ -256,7 +229,7 @@ export const Equipment = () => {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="form-group">
                   <label className="form-label">Type</label>
                   <input
@@ -294,7 +267,7 @@ export const Equipment = () => {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="form-group">
                   <label className="form-label">Running Hours</label>
                   <input
@@ -332,21 +305,15 @@ export const Equipment = () => {
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, marginTop: 0 }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
                   {isEditing ? "Save Changes" : "Create Asset"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#f3f4f6",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-muted"
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -358,4 +325,3 @@ export const Equipment = () => {
     </div>
   );
 };
-

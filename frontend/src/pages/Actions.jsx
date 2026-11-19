@@ -1,5 +1,6 @@
 // Compliance & Audit Action Tracker Page (/actions)
 // Tracks statutory, safety, and CAG recommendations with owner progress updates and management verification
+// Styled with Apple storefront minimalist aesthetic: clean typography, pill badges, and refined modal panels
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -118,63 +119,59 @@ export const Actions = () => {
   const getStatusBadgeStyle = (status) => {
     switch (status) {
       case "Open":
-        return { backgroundColor: "#e0f2fe", color: "#0369a1", border: "1px solid #bae6fd" };
+        return { backgroundColor: "#E0F2FE", color: "#0369A1", border: "1px solid #BAE6FD" };
       case "In Progress":
-        return { backgroundColor: "#fef3c7", color: "#b45309", border: "1px solid #fde68a" };
+        return { backgroundColor: "#FEF3C7", color: "#B45309", border: "1px solid #FDE68A" };
       case "Done":
-        return { backgroundColor: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" };
+        return { backgroundColor: "#EDE9FE", color: "#6D28D9", border: "1px solid #DDD6FE" };
       case "Verified":
-        return { backgroundColor: "#dcfce7", color: "#15803d", border: "1px solid #86efac" };
+        return { backgroundColor: "#DCFCE7", color: "#15803D", border: "1px solid #86EFAC" };
       default:
-        return { backgroundColor: "#f3f4f6", color: "#374151" };
+        return { backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7" };
     }
   };
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
         <div>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: "700", color: "#111827" }}>
+          <h1 style={{ fontSize: "1.85rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#2F2484" }}>
             Compliance &amp; Safety Action Tracker
           </h1>
-          <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
+          <p style={{ color: "#6E6E73", fontSize: "0.925rem", marginTop: "4px" }}>
             Tracks recommendations from CAG Reports, Central Electricity Authority, and Safety Committees
           </p>
         </div>
 
         {canCreate && (
-          <button onClick={() => setShowCreateModal(true)} className="btn-primary" style={{ width: "auto", padding: "8px 18px" }}>
+          <button onClick={() => setShowCreateModal(true)} className="btn-primary">
             + Add Compliance Action
           </button>
         )}
       </div>
 
       {error && <div className="alert-error">{error}</div>}
-      {success && (
-        <div style={{ backgroundColor: "#dcfce7", color: "#15803d", padding: "10px 14px", borderRadius: "6px", marginBottom: "16px", border: "1px solid #86efac" }}>
-          {success}
-        </div>
-      )}
+      {success && <div className="alert-success">{success}</div>}
 
       {loading ? (
-        <p>Loading action tracker items...</p>
+        <p style={{ color: "#6E6E73", padding: "20px 0" }}>Loading action tracker items...</p>
       ) : actionsList.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: "40px" }}>
-          <p style={{ color: "#6b7280" }}>No compliance action items found.</p>
+        <div className="card" style={{ textAlign: "center", padding: "48px 20px" }}>
+          <p style={{ color: "#6E6E73" }}>No compliance action items found.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+        <div className="table-container">
+          <table>
             <thead>
-              <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "12px 16px" }}>ID</th>
-                <th style={{ padding: "12px 16px" }}>Source &amp; Finding</th>
-                <th style={{ padding: "12px 16px" }}>Action Item Description</th>
-                <th style={{ padding: "12px 16px" }}>Action Owner</th>
-                <th style={{ padding: "12px 16px" }}>Due Date</th>
-                <th style={{ padding: "12px 16px" }}>Status</th>
-                <th style={{ padding: "12px 16px" }}>Evidence / Remarks</th>
-                <th style={{ padding: "12px 16px", textAlign: "center" }}>Actions</th>
+              <tr>
+                <th>ID</th>
+                <th>Source &amp; Finding</th>
+                <th>Action Item Description</th>
+                <th>Action Owner</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Evidence / Remarks</th>
+                <th style={{ textAlign: "center" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -182,71 +179,54 @@ export const Actions = () => {
                 const isOwner = user?.id === item.owner_id;
                 const isOwnerManager = isManager && user?.id === item.owner_id;
                 return (
-                  <tr key={item.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ padding: "12px 16px", fontWeight: "600" }}>#{item.id}</td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <span style={{ backgroundColor: "#f1f5f9", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "700", color: "#0f172a" }}>
+                  <tr key={item.id}>
+                    <td style={{ fontWeight: "700", color: "#1D1D1F" }}>#{item.id}</td>
+                    <td>
+                      <span className="status-pill" style={{ backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7" }}>
                         {item.source}
                       </span>
                     </td>
-                    <td style={{ padding: "12px 16px", maxWidth: "260px" }}>
-                      <div style={{ fontWeight: "500", color: "#1e293b" }}>{item.description}</div>
+                    <td style={{ maxWidth: "280px" }}>
+                      <div style={{ fontWeight: "500", color: "#1D1D1F", lineHeight: 1.4 }}>{item.description}</div>
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <div style={{ fontWeight: "600" }}>{item.owner_name}</div>
-                      <div style={{ fontSize: "0.8rem", color: "#64748b" }}>{item.owner_role}</div>
+                    <td>
+                      <div style={{ fontWeight: "600", color: "#1D1D1F" }}>{item.owner_name}</div>
+                      <div style={{ fontSize: "0.775rem", color: "#6E6E73" }}>{item.owner_role}</div>
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <div>{item.due_date}</div>
+                    <td>
+                      <div style={{ color: "#1D1D1F" }}>{item.due_date}</div>
                       {item.isOverdue && (
                         <span
+                          className="status-pill"
                           style={{
-                            backgroundColor: "#ef4444",
-                            color: "#ffffff",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
-                            fontSize: "0.7rem",
-                            fontWeight: "800",
-                            display: "inline-block",
-                            marginTop: "3px"
+                            backgroundColor: "#FEE2E2",
+                            color: "#B91C1C",
+                            border: "1px solid #FCA5A5",
+                            marginTop: "4px"
                           }}
                         >
                           OVERDUE
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
+                    <td>
                       <span
-                        style={{
-                          padding: "3px 10px",
-                          borderRadius: "9999px",
-                          fontSize: "0.8rem",
-                          fontWeight: "700",
-                          ...getStatusBadgeStyle(item.status)
-                        }}
+                        className="status-pill"
+                        style={getStatusBadgeStyle(item.status)}
                       >
                         {item.status}
                       </span>
                     </td>
-                    <td style={{ padding: "12px 16px", fontSize: "0.8rem", color: "#475569", maxWidth: "220px" }}>
+                    <td style={{ fontSize: "0.8rem", color: "#6E6E73", maxWidth: "220px" }}>
                       {item.evidence_note || "None recorded"}
                     </td>
-                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "6px", justifyContent: "center", alignItems: "center" }}>
+                    <td style={{ textAlign: "center" }}>
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                         {/* Owner update button */}
                         {isOwner && item.status !== "Verified" && (
                           <button
                             onClick={() => openProgressModal(item)}
-                            style={{
-                              backgroundColor: "#2563eb",
-                              color: "#fff",
-                              border: 0,
-                              borderRadius: "4px",
-                              padding: "4px 8px",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                              cursor: "pointer"
-                            }}
+                            className="btn-quick-fill"
                           >
                             Update
                           </button>
@@ -258,13 +238,13 @@ export const Actions = () => {
                             <span
                               title="Blocked: You cannot verify closure of an action item you own (segregation of duties)."
                               style={{
-                                fontSize: "0.7rem",
-                                color: "#991b1b",
-                                backgroundColor: "#fee2e2",
-                                padding: "3px 6px",
-                                borderRadius: "4px",
-                                fontWeight: "600",
-                                border: "1px solid #fca5a5"
+                                fontSize: "0.725rem",
+                                color: "#B91C1C",
+                                backgroundColor: "#FEE2E2",
+                                padding: "4px 8px",
+                                borderRadius: "9999px",
+                                fontWeight: "500",
+                                border: "1px solid #FCA5A5"
                               }}
                             >
                               Owner (Cannot Verify)
@@ -272,16 +252,8 @@ export const Actions = () => {
                           ) : (
                             <button
                               onClick={() => handleVerify(item.id)}
-                              style={{
-                                backgroundColor: "#16a34a",
-                                color: "#fff",
-                                border: 0,
-                                borderRadius: "4px",
-                                padding: "4px 8px",
-                                fontSize: "0.75rem",
-                                fontWeight: "600",
-                                cursor: "pointer"
-                              }}
+                              className="btn-quick-fill"
+                              style={{ borderColor: "#15803D", color: "#15803D" }}
                             >
                               Verify
                             </button>
@@ -289,10 +261,10 @@ export const Actions = () => {
                         )}
 
                         {item.status === "Verified" && (
-                          <span style={{ fontSize: "0.75rem", color: "#16a34a", fontWeight: "600" }}>✓ Verified</span>
+                          <span style={{ fontSize: "0.8rem", color: "#15803D", fontWeight: "600" }}>Verified</span>
                         )}
                         {!isOwner && !isManager && item.status !== "Verified" && (
-                          <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Read Only</span>
+                          <span style={{ fontSize: "0.775rem", color: "#86868B" }}>Read Only</span>
                         )}
                       </div>
                     </td>
@@ -306,23 +278,9 @@ export const Actions = () => {
 
       {/* Create Action Modal */}
       {showCreateModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div className="card" style={{ width: "100%", maxWidth: "500px" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "16px" }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 style={{ fontSize: "1.35rem", fontWeight: "700", letterSpacing: "-0.025em", marginBottom: "20px" }}>
               Add Compliance Action Item
             </h2>
 
@@ -354,7 +312,7 @@ export const Actions = () => {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="form-group">
                   <label className="form-label">Assigned Owner</label>
                   <select
@@ -382,21 +340,15 @@ export const Actions = () => {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, marginTop: 0 }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
                   Assign Action
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#f3f4f6",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-muted"
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -408,26 +360,12 @@ export const Actions = () => {
 
       {/* Update Progress Modal */}
       {showProgressModal && activeAction && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div className="card" style={{ width: "100%", maxWidth: "480px" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "8px" }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 style={{ fontSize: "1.35rem", fontWeight: "700", letterSpacing: "-0.025em", marginBottom: "8px" }}>
               Update Action Progress (#{activeAction.id})
             </h2>
-            <p style={{ color: "#64748b", fontSize: "0.85rem", marginBottom: "16px" }}>
+            <p style={{ color: "#6E6E73", fontSize: "0.875rem", marginBottom: "20px", lineHeight: 1.4 }}>
               {activeAction.description}
             </p>
 
@@ -456,21 +394,15 @@ export const Actions = () => {
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, marginTop: 0 }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
                   Save Progress
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowProgressModal(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#f3f4f6",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-muted"
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -482,4 +414,3 @@ export const Actions = () => {
     </div>
   );
 };
-

@@ -1,5 +1,6 @@
 // Work Order Detail & Lifecycle Actions Page (/work-orders/:id)
 // Displays full work order history, SLA status, escalated alerts, and role-permitted lifecycle action buttons
+// Styled with Apple storefront design system, pill buttons, and completely emoji-free
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -57,14 +58,13 @@ export const WorkOrderDetail = () => {
   };
 
   const openAssignModal = async () => {
-    // If we haven't loaded technicians yet, populate default
     setAssignData({ technician_id: "4", priority: "High" });
     setShowAssignModal(true);
   };
 
-  if (loading) return <p>Loading work order #{id}...</p>;
+  if (loading) return <p style={{ color: "#6E6E73", padding: "20px 0" }}>Loading work order #{id}...</p>;
   if (error && !order) return <div className="alert-error">{error}</div>;
-  if (!order) return <p>Work order not found.</p>;
+  if (!order) return <p style={{ color: "#6E6E73" }}>Work order not found.</p>;
 
   // Role permissions checks: Admin is removed from workflow actions
   const isSupervisor = user?.role === "Supervisor";
@@ -75,45 +75,44 @@ export const WorkOrderDetail = () => {
   const getStatusBadgeStyle = (status) => {
     switch (status) {
       case "Submitted":
-        return { backgroundColor: "#e0f2fe", color: "#0369a1", border: "1px solid #bae6fd" };
+        return { backgroundColor: "#E0F2FE", color: "#0369A1", border: "1px solid #BAE6FD" };
       case "Approved":
-        return { backgroundColor: "#fef3c7", color: "#b45309", border: "1px solid #fde68a" };
+        return { backgroundColor: "#FEF3C7", color: "#B45309", border: "1px solid #FDE68A" };
       case "Assigned":
-        return { backgroundColor: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" };
+        return { backgroundColor: "#EDE9FE", color: "#6D28D9", border: "1px solid #DDD6FE" };
       case "In Progress":
-        return { backgroundColor: "#dbeafe", color: "#1d4ed8", border: "1px solid #bfdbfe" };
+        return { backgroundColor: "#DBEAFE", color: "#1D4ED8", border: "1px solid #BFDBFE" };
       case "Completed":
-        return { backgroundColor: "#dcfce7", color: "#15803d", border: "1px solid #86efac" };
+        return { backgroundColor: "#DCFCE7", color: "#15803D", border: "1px solid #86EFAC" };
       case "Closed":
-        return { backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" };
+        return { backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7" };
       case "Rejected":
-        return { backgroundColor: "#fee2e2", color: "#b91c1c", border: "1px solid #fca5a5" };
+        return { backgroundColor: "#FEE2E2", color: "#B91C1C", border: "1px solid #FCA5A5" };
       default:
-        return { backgroundColor: "#f3f4f6", color: "#374151" };
+        return { backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7" };
     }
   };
 
   return (
     <div>
-      <div style={{ marginBottom: "16px" }}>
-        <Link to="/work-orders" style={{ color: "#0369a1", textDecoration: "none", fontSize: "0.9rem" }}>
+      <div style={{ marginBottom: "20px" }}>
+        <Link to="/work-orders" style={{ color: "#2F2484", fontSize: "0.875rem", fontWeight: "500" }}>
           &larr; Back to Work Orders List
         </Link>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <h1 style={{ fontSize: "1.6rem", fontWeight: "700", color: "#111827" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <h1 style={{ fontSize: "1.85rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#1D1D1F" }}>
               Work Order #{order.id}: {order.title}
             </h1>
 
             <span
+              className="status-pill"
               style={{
+                fontSize: "0.8rem",
                 padding: "4px 12px",
-                borderRadius: "9999px",
-                fontSize: "0.85rem",
-                fontWeight: "700",
                 ...getStatusBadgeStyle(order.status)
               }}
             >
@@ -123,91 +122,90 @@ export const WorkOrderDetail = () => {
             {/* Escalated Tag in Red */}
             {order.escalated === 1 && (
               <span
+                className="status-pill"
                 style={{
-                  backgroundColor: "#ef4444",
-                  color: "#ffffff",
-                  padding: "4px 10px",
-                  borderRadius: "4px",
-                  fontSize: "0.8rem",
-                  fontWeight: "800",
-                  letterSpacing: "0.5px"
+                  backgroundColor: "#FEE2E2",
+                  color: "#B91C1C",
+                  border: "1px solid #FCA5A5",
+                  fontSize: "0.75rem",
+                  letterSpacing: "0.03em"
                 }}
               >
                 ESCALATED (SLA BREACHED)
               </span>
             )}
           </div>
-          <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "0.9rem" }}>
-            Category: <strong style={{ textTransform: "capitalize" }}>{order.type} Maintenance</strong> &bull; Created: {new Date(order.created_at).toLocaleString()}
+          <p style={{ color: "#6E6E73", marginTop: "6px", fontSize: "0.9rem" }}>
+            Category: <strong style={{ textTransform: "capitalize", color: "#1D1D1F" }}>{order.type} Maintenance</strong> &bull; Created: {new Date(order.created_at).toLocaleString()}
           </p>
         </div>
       </div>
 
       {error && <div className="alert-error">{error}</div>}
       {actionSuccess && (
-        <div style={{ backgroundColor: "#dcfce7", color: "#15803d", padding: "10px 14px", borderRadius: "6px", marginBottom: "16px", border: "1px solid #86efac" }}>
+        <div className="alert-success">
           {actionSuccess}
         </div>
       )}
 
       {/* Main Details Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "24px", marginBottom: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "24px", marginBottom: "28px" }}>
         <div className="card">
-          <h2 style={{ fontSize: "1.1rem", fontWeight: "600", marginBottom: "12px", color: "#1f2937" }}>
+          <h2 style={{ fontSize: "1.2rem", fontWeight: "700", marginBottom: "14px", color: "#2F2484" }}>
             Description &amp; Observations
           </h2>
-          <p style={{ color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+          <p style={{ color: "#1D1D1F", whiteSpace: "pre-wrap", lineHeight: 1.6, fontSize: "0.95rem" }}>
             {order.description || "No detailed description provided."}
           </p>
 
-          <hr style={{ margin: "20px 0", border: 0, borderTop: "1px solid #e5e7eb" }} />
+          <hr style={{ margin: "24px 0", border: 0, borderTop: "1px solid #E5E5EA" }} />
 
-          <h2 style={{ fontSize: "1.1rem", fontWeight: "600", marginBottom: "12px", color: "#1f2937" }}>
+          <h2 style={{ fontSize: "1.2rem", fontWeight: "700", marginBottom: "14px", color: "#2F2484" }}>
             Associated Asset Details
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: "0.9rem" }}>
-            <div><span style={{ color: "#6b7280" }}>Code:</span> <strong>{order.equipment_code}</strong></div>
-            <div><span style={{ color: "#6b7280" }}>Name:</span> <strong>{order.equipment_name}</strong></div>
-            <div><span style={{ color: "#6b7280" }}>Location:</span> {order.equipment_location}</div>
-            <div><span style={{ color: "#6b7280" }}>Section:</span> {order.equipment_section}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", fontSize: "0.9rem" }}>
+            <div><span style={{ color: "#5C5C6A" }}>Code:</span> <strong style={{ color: "#2F2484" }}>{order.equipment_code}</strong></div>
+            <div><span style={{ color: "#5C5C6A" }}>Name:</span> <strong style={{ color: "#1D1D1F" }}>{order.equipment_name}</strong></div>
+            <div><span style={{ color: "#5C5C6A" }}>Location:</span> <span style={{ color: "#1D1D1F" }}>{order.equipment_location}</span></div>
+            <div><span style={{ color: "#5C5C6A" }}>Section:</span> <span style={{ color: "#1D1D1F" }}>{order.equipment_section}</span></div>
           </div>
         </div>
 
         {/* Sidebar Status Info Card */}
-        <div className="card">
-          <h2 style={{ fontSize: "1.1rem", fontWeight: "600", marginBottom: "14px", color: "#1f2937" }}>
+        <div className="card-secondary">
+          <h2 style={{ fontSize: "1.2rem", fontWeight: "700", marginBottom: "16px", color: "#2F2484" }}>
             Assignment &amp; SLA
           </h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.9rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", fontSize: "0.9rem" }}>
             <div>
-              <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>Requester</div>
-              <div style={{ fontWeight: "600" }}>{order.requester_name}</div>
-              <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{order.requester_email}</div>
+              <div style={{ color: "#5C5C6A", fontSize: "0.775rem", textTransform: "uppercase", fontWeight: "700", letterSpacing: "0.03em" }}>Requester</div>
+              <div style={{ fontWeight: "700", color: "#1D1D1F", marginTop: "2px" }}>{order.requester_name}</div>
+              <div style={{ fontSize: "0.8rem", color: "#5C5C6A" }}>{order.requester_email}</div>
             </div>
 
             <div>
-              <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>Assigned Technician</div>
-              <div style={{ fontWeight: "600" }}>{order.technician_name || "Not yet assigned"}</div>
-              {order.technician_email && <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{order.technician_email}</div>}
+              <div style={{ color: "#5C5C6A", fontSize: "0.775rem", textTransform: "uppercase", fontWeight: "700", letterSpacing: "0.03em" }}>Assigned Technician</div>
+              <div style={{ fontWeight: "700", color: "#1D1D1F", marginTop: "2px" }}>{order.technician_name || "Not yet assigned"}</div>
+              {order.technician_email && <div style={{ fontSize: "0.8rem", color: "#5C5C6A" }}>{order.technician_email}</div>}
             </div>
 
             <div>
-              <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>Priority Level</div>
-              <div style={{ fontWeight: "600" }}>{order.priority || "Medium (Default)"}</div>
+              <div style={{ color: "#5C5C6A", fontSize: "0.775rem", textTransform: "uppercase", fontWeight: "700", letterSpacing: "0.03em" }}>Priority Level</div>
+              <div style={{ fontWeight: "700", color: "#2F2484", marginTop: "2px" }}>{order.priority || "Medium (Default)"}</div>
             </div>
 
             <div>
-              <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>SLA Resolution Due At</div>
-              <div style={{ fontWeight: "600", color: order.escalated ? "#dc2626" : "#111827" }}>
+              <div style={{ color: "#5C5C6A", fontSize: "0.775rem", textTransform: "uppercase", fontWeight: "700", letterSpacing: "0.03em" }}>SLA Resolution Due At</div>
+              <div style={{ fontWeight: "700", color: order.escalated ? "#B91C1C" : "#1D1D1F", marginTop: "2px" }}>
                 {order.sla_due_at ? new Date(order.sla_due_at).toLocaleString() : "Pending assignment"}
               </div>
             </div>
 
             {order.closed_at && (
               <div>
-                <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>Verified Closed At</div>
-                <div style={{ fontWeight: "600", color: "#059669" }}>
+                <div style={{ color: "#5C5C6A", fontSize: "0.775rem", textTransform: "uppercase", fontWeight: "700", letterSpacing: "0.03em" }}>Verified Closed At</div>
+                <div style={{ fontWeight: "700", color: "#15803D", marginTop: "2px" }}>
                   {new Date(order.closed_at).toLocaleString()}
                 </div>
               </div>
@@ -217,9 +215,9 @@ export const WorkOrderDetail = () => {
       </div>
 
       {/* Role-Permitted Action Controls */}
-      <div className="card" style={{ backgroundColor: "#f8fafc", border: "1px solid #cbd5e1" }}>
-        <h2 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "12px", color: "#0f172a" }}>
-          Lifecycle Actions (Available to your role: {user?.role})
+      <div className="card" style={{ padding: "24px 32px", borderTop: "3px solid #2F2484" }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "16px", color: "#2F2484" }}>
+          Lifecycle Actions (Role: {user?.role})
         </h2>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
@@ -229,12 +227,12 @@ export const WorkOrderDetail = () => {
               <span
                 style={{
                   fontSize: "0.85rem",
-                  color: "#991b1b",
-                  backgroundColor: "#fee2e2",
-                  padding: "8px 14px",
-                  borderRadius: "6px",
-                  fontWeight: "600",
-                  border: "1px solid #fca5a5"
+                  color: "#B91C1C",
+                  backgroundColor: "#FEE2E2",
+                  padding: "8px 16px",
+                  borderRadius: "9999px",
+                  fontWeight: "500",
+                  border: "1px solid #FCA5A5"
                 }}
               >
                 Blocked: You raised this work order. Approval and rejection require another supervisor (segregation of duties).
@@ -243,31 +241,17 @@ export const WorkOrderDetail = () => {
               <>
                 <button
                   onClick={() => handleAction("approve")}
-                  style={{
-                    backgroundColor: "#16a34a",
-                    color: "#ffffff",
-                    padding: "8px 18px",
-                    border: 0,
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-primary"
+                  style={{ backgroundColor: "#15803D" }}
                 >
-                  ✓ Approve Work Order
+                  Approve Work Order
                 </button>
                 <button
                   onClick={() => handleAction("reject", { reason: "Rejected by plant supervisor" })}
-                  style={{
-                    backgroundColor: "#dc2626",
-                    color: "#ffffff",
-                    padding: "8px 18px",
-                    border: 0,
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-primary"
+                  style={{ backgroundColor: "#B91C1C" }}
                 >
-                  ✕ Reject Work Order
+                  Reject Work Order
                 </button>
               </>
             )
@@ -277,17 +261,9 @@ export const WorkOrderDetail = () => {
           {order.status === "Approved" && isManager && (
             <button
               onClick={openAssignModal}
-              style={{
-                backgroundColor: "#7c3aed",
-                color: "#ffffff",
-                padding: "8px 18px",
-                border: 0,
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer"
-              }}
+              className="btn-primary"
             >
-              Assign Technician &amp; Set Priority (SLA)
+              Assign Technician &amp; Set Priority
             </button>
           )}
 
@@ -295,17 +271,9 @@ export const WorkOrderDetail = () => {
           {order.status === "Assigned" && isAssignedTech && (
             <button
               onClick={() => handleAction("start")}
-              style={{
-                backgroundColor: "#2563eb",
-                color: "#ffffff",
-                padding: "8px 18px",
-                border: 0,
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer"
-              }}
+              className="btn-primary"
             >
-              ▶ Start Maintenance Work
+              Start Maintenance Work
             </button>
           )}
 
@@ -313,17 +281,10 @@ export const WorkOrderDetail = () => {
           {order.status === "In Progress" && isAssignedTech && (
             <button
               onClick={() => handleAction("complete")}
-              style={{
-                backgroundColor: "#059669",
-                color: "#ffffff",
-                padding: "8px 18px",
-                border: 0,
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer"
-              }}
+              className="btn-primary"
+              style={{ backgroundColor: "#15803D" }}
             >
-              ✓ Mark Work Completed
+              Complete Work Order
             </button>
           )}
 
@@ -332,31 +293,16 @@ export const WorkOrderDetail = () => {
             <>
               <button
                 onClick={() => handleAction("verify-close")}
-                style={{
-                  backgroundColor: "#0f172a",
-                  color: "#ffffff",
-                  padding: "8px 18px",
-                  border: 0,
-                  borderRadius: "6px",
-                  fontWeight: "600",
-                  cursor: "pointer"
-                }}
+                className="btn-primary"
+                style={{ backgroundColor: "#1D1D1F" }}
               >
-                ✓ Verify &amp; Close Work Order
+                Verify and Close
               </button>
               <button
                 onClick={() => handleAction("reopen", { reason: "Requester requested rework on inspection" })}
-                style={{
-                  backgroundColor: "#d97706",
-                  color: "#ffffff",
-                  padding: "8px 18px",
-                  border: 0,
-                  borderRadius: "6px",
-                  fontWeight: "600",
-                  cursor: "pointer"
-                }}
+                className="btn-secondary"
               >
-                ↺ Reopen for Rework
+                Reopen for Rework
               </button>
             </>
           )}
@@ -365,22 +311,14 @@ export const WorkOrderDetail = () => {
           {order.status === "Closed" && isOriginalRequester && (
             <button
               onClick={() => handleAction("reopen", { reason: "Recurrence observed after closing" })}
-              style={{
-                backgroundColor: "#d97706",
-                color: "#ffffff",
-                padding: "8px 18px",
-                border: 0,
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer"
-              }}
+              className="btn-secondary"
             >
-              ↺ Reopen Closed Order
+              Reopen Closed Order
             </button>
           )}
 
           {/* If no action is currently valid for this role and status */}
-          <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
+          <span style={{ fontSize: "0.85rem", color: "#6E6E73" }}>
             {order.status === "Closed"
               ? "This work order has been verified and closed. The Requester can reopen it if the fault recurs."
               : order.status === "Rejected"
@@ -392,23 +330,9 @@ export const WorkOrderDetail = () => {
 
       {/* Assignment Modal for Manager */}
       {showAssignModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div className="card" style={{ width: "100%", maxWidth: "460px" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "16px" }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 style={{ fontSize: "1.35rem", fontWeight: "700", letterSpacing: "-0.025em", marginBottom: "20px" }}>
               Assign Technician &amp; Set SLA
             </h2>
 
@@ -447,21 +371,15 @@ export const WorkOrderDetail = () => {
                 </select>
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, marginTop: 0 }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "28px" }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
                   Confirm Assignment
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#f3f4f6",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-muted"
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -473,4 +391,3 @@ export const WorkOrderDetail = () => {
     </div>
   );
 };
-

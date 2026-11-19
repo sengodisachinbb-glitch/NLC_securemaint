@@ -1,5 +1,6 @@
 // Preventive Maintenance Schedules Page (/pm-schedules)
 // Accessible by Manager and Admin to configure automated recurring maintenance routines
+// Styled with Apple storefront minimalist aesthetic: clean typography, pill badges, and refined modal panels
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -94,18 +95,18 @@ export const PmSchedules = () => {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
         <div>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: "700", color: "#111827" }}>
+          <h1 style={{ fontSize: "1.85rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#2F2484" }}>
             Preventive Maintenance Schedules
           </h1>
-          <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
-            Automated background scheduler creates preventive work orders every minute when due
+          <p style={{ color: "#6E6E73", fontSize: "0.925rem", marginTop: "4px" }}>
+            Automated background scheduler creates preventive work orders based on runtime cadence or equipment hours
           </p>
         </div>
 
         {canManage && (
-          <button onClick={() => setShowModal(true)} className="btn-primary" style={{ width: "auto", padding: "8px 18px" }}>
+          <button onClick={() => setShowModal(true)} className="btn-primary">
             + New PM Schedule
           </button>
         )}
@@ -114,19 +115,19 @@ export const PmSchedules = () => {
       {demoMode && (
         <div
           style={{
-            backgroundColor: "#fffbeb",
-            border: "1px solid #fef3c7",
-            color: "#92400e",
-            padding: "10px 14px",
-            borderRadius: "6px",
-            marginBottom: "16px",
+            backgroundColor: "#FEF3C7",
+            border: "1px solid #FDE68A",
+            color: "#B45309",
+            padding: "12px 18px",
+            borderRadius: "12px",
+            marginBottom: "24px",
             fontSize: "0.875rem",
             display: "flex",
             alignItems: "center",
-            gap: "8px"
+            gap: "10px"
           }}
         >
-          <strong style={{ backgroundColor: "#f59e0b", color: "#fff", padding: "2px 6px", borderRadius: "4px", fontSize: "0.75rem" }}>
+          <strong style={{ backgroundColor: "#B45309", color: "#FFFFFF", padding: "2px 8px", borderRadius: "9999px", fontSize: "0.75rem", letterSpacing: "0.02em" }}>
             DEMO MODE ACTIVE
           </strong>
           <span>Intervals are treated as <strong>minutes</strong> (node-cron automatically triggers live in ~60 seconds).</span>
@@ -134,68 +135,64 @@ export const PmSchedules = () => {
       )}
 
       {error && <div className="alert-error">{error}</div>}
-      {success && (
-        <div style={{ backgroundColor: "#dcfce7", color: "#15803d", padding: "10px 14px", borderRadius: "6px", marginBottom: "16px", border: "1px solid #86efac" }}>
-          {success}
-        </div>
-      )}
+      {success && <div className="alert-success">{success}</div>}
 
       {loading ? (
-        <p>Loading schedules...</p>
+        <p style={{ color: "#6E6E73", padding: "20px 0" }}>Loading schedules...</p>
       ) : schedules.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: "40px" }}>
-          <p style={{ color: "#6b7280" }}>No preventive maintenance schedules configured.</p>
+        <div className="card" style={{ textAlign: "center", padding: "48px 20px" }}>
+          <p style={{ color: "#6E6E73" }}>No preventive maintenance schedules configured.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+        <div className="table-container">
+          <table>
             <thead>
-              <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "12px 16px" }}>ID</th>
-                <th style={{ padding: "12px 16px" }}>Asset</th>
-                <th style={{ padding: "12px 16px" }}>Routine Maintenance Task</th>
-                <th style={{ padding: "12px 16px" }}>Trigger &amp; Interval</th>
-                <th style={{ padding: "12px 16px" }}>Last Triggered</th>
-                <th style={{ padding: "12px 16px" }}>Next Auto-Creation / Hours Remaining</th>
+              <tr>
+                <th>ID</th>
+                <th>Asset</th>
+                <th>Routine Maintenance Task</th>
+                <th>Trigger &amp; Interval</th>
+                <th>Last Triggered</th>
+                <th>Next Auto-Creation / Hours Remaining</th>
               </tr>
             </thead>
             <tbody>
               {schedules.map((s) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "12px 16px", fontWeight: "600" }}>#{s.id}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{ fontWeight: "700", color: "#0a2540" }}>{s.equipment_code}</span>
-                    <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{s.equipment_name}</div>
+                <tr key={s.id}>
+                  <td style={{ fontWeight: "700", color: "#1D1D1F" }}>#{s.id}</td>
+                  <td>
+                    <span style={{ fontWeight: "700", color: "#1D1D1F" }}>{s.equipment_code}</span>
+                    <div style={{ fontSize: "0.775rem", color: "#6E6E73" }}>{s.equipment_name}</div>
                   </td>
-                  <td style={{ padding: "12px 16px", fontWeight: "500", color: "#1f2937" }}>{s.task}</td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ fontWeight: "500", color: "#1D1D1F" }}>{s.task}</td>
+                  <td>
                     {s.trigger_type === "hours" ? (
                       <div>
-                        <span style={{ backgroundColor: "#e0e7ff", color: "#3730a3", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "700", display: "inline-block", marginBottom: "4px" }}>
+                        <span className="status-pill" style={{ backgroundColor: "#EDE9FE", color: "#6D28D9", border: "1px solid #DDD6FE", marginBottom: "4px" }}>
                           Running Hours
                         </span>
-                        <div style={{ fontWeight: "600", color: "#1f2937" }}>
+                        <div style={{ fontWeight: "600", color: "#1D1D1F", marginTop: "2px" }}>
                           Every {s.interval_hours} hrs
                         </div>
                       </div>
                     ) : (
                       <div>
-                        <span style={{ backgroundColor: "#f1f5f9", color: "#334155", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "700", display: "inline-block", marginBottom: "4px" }}>
+                        <span className="status-pill" style={{ backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7", marginBottom: "4px" }}>
                           Calendar Cadence
                         </span>
-                        <div style={{ fontWeight: "600", color: "#1f2937" }}>
+                        <div style={{ fontWeight: "600", color: "#1D1D1F", marginTop: "2px" }}>
                           Every {s.interval_days} {intervalUnit}
                         </div>
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "#6b7280" }}>
+                  <td style={{ fontSize: "0.825rem", color: "#6E6E73" }}>
                     {s.trigger_type === "hours" ? (
                       s.last_done_hours > 0 ? (
                         <div>
-                          <span style={{ fontWeight: "600", color: "#374151" }}>{s.last_done_hours} hrs</span>
+                          <span style={{ fontWeight: "600", color: "#1D1D1F" }}>{s.last_done_hours} hrs</span>
                           {s.last_done && (
-                            <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                            <div style={{ fontSize: "0.75rem", color: "#86868B" }}>
                               {new Date(s.last_done).toLocaleDateString()}
                             </div>
                           )}
@@ -207,25 +204,25 @@ export const PmSchedules = () => {
                       s.last_done ? new Date(s.last_done).toLocaleString() : "Pending first run"
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px", fontSize: "0.85rem" }}>
+                  <td style={{ fontSize: "0.825rem" }}>
                     {s.trigger_type === "hours" ? (
                       <div>
                         <span
                           style={{
                             fontWeight: "700",
-                            color: s.hours_remaining === 0 ? "#dc2626" : "#0284c7"
+                            color: s.hours_remaining === 0 ? "#B91C1C" : "#2F2484"
                           }}
                         >
                           {s.hours_remaining !== null && s.hours_remaining !== undefined
                             ? `${s.hours_remaining} hrs remaining`
                             : "Calculating..."}
                         </span>
-                        <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                        <div style={{ fontSize: "0.75rem", color: "#6E6E73", marginTop: "2px" }}>
                           Due at {(s.last_done_hours || 0) + (s.interval_hours || 0)} hrs (Current: {s.equipment_running_hours || 0} hrs)
                         </div>
                       </div>
                     ) : (
-                      <span style={{ fontWeight: "600", color: "#0284c7" }}>
+                      <span style={{ fontWeight: "600", color: "#2F2484" }}>
                         {s.next_due ? new Date(s.next_due).toLocaleString() : "—"}
                       </span>
                     )}
@@ -239,23 +236,9 @@ export const PmSchedules = () => {
 
       {/* Add PM Schedule Modal */}
       {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div className="card" style={{ width: "100%", maxWidth: "480px" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "16px" }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 style={{ fontSize: "1.35rem", fontWeight: "700", letterSpacing: "-0.025em", marginBottom: "20px" }}>
               Configure Preventive Routine
             </h2>
 
@@ -316,7 +299,7 @@ export const PmSchedules = () => {
                     placeholder="e.g. 250"
                     required
                   />
-                  <small style={{ color: "#6b7280", marginTop: "4px", display: "block" }}>
+                  <small style={{ color: "#6E6E73", marginTop: "6px", display: "block", fontSize: "0.8rem" }}>
                     A preventive order triggers automatically when equipment reaches (last done + interval) running hours.
                   </small>
                 </div>
@@ -333,7 +316,7 @@ export const PmSchedules = () => {
                     onChange={(e) => setFormData({ ...formData, interval_days: e.target.value })}
                     required
                   />
-                  <small style={{ color: "#6b7280", marginTop: "4px", display: "block" }}>
+                  <small style={{ color: "#6E6E73", marginTop: "6px", display: "block", fontSize: "0.8rem" }}>
                     {demoMode
                       ? "In DEMO_MODE, entering 2 will trigger a PM work order in 2 minutes."
                       : "Work orders will auto-generate automatically based on this cadence."}
@@ -341,21 +324,15 @@ export const PmSchedules = () => {
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, marginTop: 0 }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
                   Save Routine
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#f3f4f6",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-muted"
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -367,4 +344,3 @@ export const PmSchedules = () => {
     </div>
   );
 };
-

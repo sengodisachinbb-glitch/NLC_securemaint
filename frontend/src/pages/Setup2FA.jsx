@@ -1,6 +1,7 @@
 // Two-Factor Authentication Setup Page (/setup-2fa)
 // Displays QR code and allows user to verify first TOTP code to activate 2FA
 // Enforced for Admin and Manager roles
+// Styled with Apple storefront minimalist aesthetic: high whitespace, clean typography, pill buttons
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -71,12 +72,12 @@ export const Setup2FA = () => {
   };
 
   return (
-    <div style={{ maxWidth: "620px", margin: "0 auto", paddingBottom: "40px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: "700", color: "var(--nlc-primary)" }}>
-          Two-Factor Authentication (2FA) Setup
+    <div style={{ maxWidth: "640px", margin: "0 auto", paddingBottom: "48px" }}>
+      <div style={{ marginBottom: "28px" }}>
+        <h1 style={{ fontSize: "1.85rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#1D1D1F" }}>
+          Two-Factor Authentication Setup
         </h1>
-        <p style={{ color: "var(--nlc-text-muted)", marginTop: "4px" }}>
+        <p style={{ color: "#6E6E73", fontSize: "0.925rem", marginTop: "4px" }}>
           Mandatory security enrollment for Administrative &amp; Operational Leadership accounts
         </p>
       </div>
@@ -85,61 +86,51 @@ export const Setup2FA = () => {
         {/* Role Notice Banner */}
         <div
           style={{
-            backgroundColor: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            color: "#1e40af",
-            padding: "12px 16px",
-            borderRadius: "6px",
+            backgroundColor: "#F5F5F7",
+            border: "1px solid #D2D2D7",
+            color: "#1D1D1F",
+            padding: "14px 18px",
+            borderRadius: "12px",
             fontSize: "0.875rem",
-            marginBottom: "20px"
+            marginBottom: "24px",
+            lineHeight: 1.5
           }}
         >
-          <strong>Security Policy Notice:</strong> As a <strong>{user?.role}</strong>, multi-factor authentication (TOTP) is required by NLCIL Cyber Security protocols to protect industrial assets and plant operations.
+          <strong>Security Policy:</strong> Multi-factor authentication (TOTP) is required by NLCIL cyber security policy for <strong>{user?.role}</strong> accounts to safeguard industrial assets.
         </div>
 
         {error && <div className="alert-error">{error}</div>}
 
         {success && (
-          <div
-            style={{
-              backgroundColor: "#ecfdf5",
-              border: "1px solid #a7f3d0",
-              color: "#065f46",
-              padding: "12px 16px",
-              borderRadius: "6px",
-              fontSize: "0.9rem",
-              marginBottom: "20px",
-              fontWeight: "600"
-            }}
-          >
-            &#10003; Two-factor authentication successfully enabled! Redirecting to Dashboard...
+          <div className="alert-success">
+            Two-factor authentication successfully enabled. Redirecting to Dashboard...
           </div>
         )}
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "var(--nlc-text-muted)" }}>
+          <div style={{ textAlign: "center", padding: "48px 20px", color: "#6E6E73" }}>
             Generating unique cryptographic TOTP credentials...
           </div>
         ) : (
           <div>
             {/* Step 1: Scan QR Code */}
-            <div style={{ marginBottom: "24px" }}>
-              <h3 style={{ fontSize: "1.05rem", fontWeight: "600", color: "var(--nlc-primary)", marginBottom: "8px" }}>
+            <div style={{ marginBottom: "28px" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "600", color: "#1D1D1F", marginBottom: "8px" }}>
                 Step 1: Scan QR Code with Authenticator App
               </h3>
-              <p style={{ fontSize: "0.875rem", color: "var(--nlc-text-muted)", marginBottom: "16px" }}>
+              <p style={{ fontSize: "0.875rem", color: "#6E6E73", marginBottom: "20px" }}>
                 Open <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong> on your mobile device and scan the barcode below:
               </p>
 
               {qrCode && (
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
                   <div
                     style={{
-                      background: "#ffffff",
-                      padding: "12px",
-                      borderRadius: "10px",
-                      border: "1px solid var(--nlc-border)",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+                      background: "#FFFFFF",
+                      padding: "16px",
+                      borderRadius: "16px",
+                      border: "1px solid #D2D2D7",
+                      boxShadow: "0 2px 12px rgba(0,0,0,0.04)"
                     }}
                   >
                     <img
@@ -154,22 +145,22 @@ export const Setup2FA = () => {
               {/* Manual Secret Key Fallback */}
               <div
                 style={{
-                  background: "#f9fafb",
-                  border: "1px solid var(--nlc-border)",
-                  borderRadius: "6px",
-                  padding: "10px 14px",
+                  background: "#F5F5F7",
+                  border: "1px solid #D2D2D7",
+                  borderRadius: "12px",
+                  padding: "14px 18px",
                   fontSize: "0.85rem"
                 }}
               >
-                <div style={{ fontWeight: "600", marginBottom: "4px", color: "#374151" }}>
+                <div style={{ fontWeight: "600", marginBottom: "6px", color: "#1D1D1F" }}>
                   Cannot scan? Enter setup key manually:
                 </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                   <code
                     style={{
-                      fontFamily: "monospace",
+                      fontFamily: "ui-monospace, monospace",
                       fontWeight: "700",
-                      color: "var(--nlc-primary)",
+                      color: "#2F2484",
                       letterSpacing: "1px",
                       wordBreak: "break-all"
                     }}
@@ -180,9 +171,8 @@ export const Setup2FA = () => {
                     type="button"
                     onClick={copySecret}
                     className="btn-quick-fill"
-                    style={{ padding: "4px 10px", flexShrink: 0 }}
                   >
-                    {copied ? "Copied!" : "Copy Key"}
+                    {copied ? "Copied" : "Copy Key"}
                   </button>
                 </div>
               </div>
@@ -190,11 +180,11 @@ export const Setup2FA = () => {
 
             {/* Step 2: Verification Form */}
             <form onSubmit={handleEnable2fa}>
-              <div style={{ marginBottom: "20px" }}>
-                <h3 style={{ fontSize: "1.05rem", fontWeight: "600", color: "var(--nlc-primary)", marginBottom: "8px" }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "600", color: "#1D1D1F", marginBottom: "8px" }}>
                   Step 2: Enter 6-Digit Verification Code
                 </h3>
-                <p style={{ fontSize: "0.875rem", color: "var(--nlc-text-muted)", marginBottom: "12px" }}>
+                <p style={{ fontSize: "0.875rem", color: "#6E6E73", marginBottom: "16px" }}>
                   Enter the live 6-digit confirmation code displayed in your authenticator app to confirm setup:
                 </p>
 
@@ -206,8 +196,8 @@ export const Setup2FA = () => {
                     maxLength={6}
                     className="form-input"
                     style={{
-                      fontSize: "1.4rem",
-                      letterSpacing: "6px",
+                      fontSize: "1.5rem",
+                      letterSpacing: "8px",
                       textAlign: "center",
                       fontWeight: "700",
                       maxWidth: "260px",
@@ -226,9 +216,9 @@ export const Setup2FA = () => {
                 type="submit"
                 className="btn-primary"
                 disabled={submitting || code.length < 6}
-                style={{ padding: "12px" }}
+                style={{ width: "100%", padding: "12px" }}
               >
-                {submitting ? "Enabling 2FA..." : "Verify Code & Enable 2FA"}
+                {submitting ? "Enabling 2FA..." : "Verify Code &amp; Enable 2FA"}
               </button>
             </form>
           </div>
@@ -237,4 +227,3 @@ export const Setup2FA = () => {
     </div>
   );
 };
-

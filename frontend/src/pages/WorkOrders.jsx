@@ -1,5 +1,6 @@
 // Work Orders Listing & Create Page (/work-orders)
 // Filtered by role automatically by backend, shows status badges, escalated tags, and create modal
+// Styled with Apple storefront minimalist aesthetic: clean typography, refined pill badges, high whitespace
 
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -79,30 +80,32 @@ export const WorkOrders = () => {
   const getStatusBadgeStyle = (status) => {
     switch (status) {
       case "Submitted":
-        return { backgroundColor: "#e0f2fe", color: "#0369a1", border: "1px solid #bae6fd" };
+        return { backgroundColor: "#E0F2FE", color: "#0369A1", border: "1px solid #BAE6FD" };
       case "Approved":
-        return { backgroundColor: "#fef3c7", color: "#b45309", border: "1px solid #fde68a" };
+        return { backgroundColor: "#FEF3C7", color: "#B45309", border: "1px solid #FDE68A" };
       case "Assigned":
-        return { backgroundColor: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" };
+        return { backgroundColor: "#EDE9FE", color: "#6D28D9", border: "1px solid #DDD6FE" };
       case "In Progress":
-        return { backgroundColor: "#dbeafe", color: "#1d4ed8", border: "1px solid #bfdbfe" };
+        return { backgroundColor: "#DBEAFE", color: "#1D4ED8", border: "1px solid #BFDBFE" };
       case "Completed":
-        return { backgroundColor: "#dcfce7", color: "#15803d", border: "1px solid #86efac" };
+        return { backgroundColor: "#DCFCE7", color: "#15803D", border: "1px solid #86EFAC" };
       case "Closed":
-        return { backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" };
+        return { backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7" };
       case "Rejected":
-        return { backgroundColor: "#fee2e2", color: "#b91c1c", border: "1px solid #fca5a5" };
+        return { backgroundColor: "#FEE2E2", color: "#B91C1C", border: "1px solid #FCA5A5" };
       default:
-        return { backgroundColor: "#f3f4f6", color: "#374151" };
+        return { backgroundColor: "#F5F5F7", color: "#1D1D1F", border: "1px solid #D2D2D7" };
     }
   };
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
         <div>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: "700", color: "#111827" }}>Work Orders</h1>
-          <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
+          <h1 style={{ fontSize: "1.85rem", fontWeight: "700", letterSpacing: "-0.03em", color: "#2F2484" }}>
+            Work Orders
+          </h1>
+          <p style={{ color: "#6E6E73", fontSize: "0.925rem", marginTop: "4px" }}>
             {user?.role === "Requester"
               ? "Showing work orders submitted by you"
               : user?.role === "Technician"
@@ -114,76 +117,65 @@ export const WorkOrders = () => {
         <button
           onClick={() => setShowCreateModal(true)}
           className="btn-primary"
-          style={{ width: "auto", padding: "8px 18px" }}
         >
           + New Work Order
         </button>
       </div>
 
       {error && <div className="alert-error">{error}</div>}
-      {success && (
-        <div style={{ backgroundColor: "#dcfce7", color: "#15803d", padding: "10px 14px", borderRadius: "6px", marginBottom: "16px", border: "1px solid #86efac" }}>
-          {success}
-        </div>
-      )}
+      {success && <div className="alert-success">{success}</div>}
 
       {loading ? (
-        <p>Loading work orders...</p>
+        <p style={{ color: "#6E6E73", padding: "20px 0" }}>Loading work orders...</p>
       ) : orders.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: "40px" }}>
-          <p style={{ color: "#6b7280" }}>No work orders found matching your role profile.</p>
+        <div className="card" style={{ textAlign: "center", padding: "48px 20px" }}>
+          <p style={{ color: "#6E6E73" }}>No work orders found matching your role profile.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+        <div className="table-container">
+          <table>
             <thead>
-              <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "12px 16px" }}>ID</th>
-                <th style={{ padding: "12px 16px" }}>Title</th>
-                <th style={{ padding: "12px 16px" }}>Equipment</th>
-                <th style={{ padding: "12px 16px" }}>Type</th>
-                <th style={{ padding: "12px 16px" }}>Status</th>
-                <th style={{ padding: "12px 16px" }}>Priority</th>
-                <th style={{ padding: "12px 16px" }}>Technician</th>
-                <th style={{ padding: "12px 16px" }}>SLA Due</th>
-                <th style={{ padding: "12px 16px", textAlign: "center" }}>Action</th>
+              <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Equipment</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Technician</th>
+                <th>SLA Due</th>
+                <th style={{ textAlign: "center" }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "12px 16px", fontWeight: "600" }}>#{order.id}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ fontWeight: "600", color: "#111827" }}>{order.title}</div>
-                    <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Req by: {order.requester_name}</div>
+                <tr key={order.id}>
+                  <td style={{ fontWeight: "700", color: "#1D1D1F" }}>#{order.id}</td>
+                  <td>
+                    <div style={{ fontWeight: "600", color: "#1D1D1F" }}>{order.title}</div>
+                    <div style={{ fontSize: "0.775rem", color: "#6E6E73" }}>Req by: {order.requester_name}</div>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{ fontWeight: "600", color: "#0a2540" }}>{order.equipment_code}</span>
-                    <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{order.equipment_name}</div>
+                  <td>
+                    <span style={{ fontWeight: "600", color: "#1D1D1F" }}>{order.equipment_code}</span>
+                    <div style={{ fontSize: "0.775rem", color: "#6E6E73" }}>{order.equipment_name}</div>
                   </td>
-                  <td style={{ padding: "12px 16px", textTransform: "capitalize" }}>
+                  <td style={{ textTransform: "capitalize" }}>
                     <span
+                      className="status-pill"
                       style={{
-                        padding: "2px 8px",
-                        borderRadius: "4px",
-                        fontSize: "0.75rem",
-                        backgroundColor: order.type === "preventive" ? "#fef3c7" : "#f3f4f6",
-                        color: order.type === "preventive" ? "#b45309" : "#374151"
+                        backgroundColor: order.type === "preventive" ? "#FEF3C7" : "#F5F5F7",
+                        color: order.type === "preventive" ? "#B45309" : "#1D1D1F",
+                        border: `1px solid ${order.type === "preventive" ? "#FDE68A" : "#D2D2D7"}`
                       }}
                     >
                       {order.type}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                       <span
-                        style={{
-                          padding: "3px 10px",
-                          borderRadius: "9999px",
-                          fontSize: "0.8rem",
-                          fontWeight: "700",
-                          ...getStatusBadgeStyle(order.status)
-                        }}
+                        className="status-pill"
+                        style={getStatusBadgeStyle(order.status)}
                       >
                         {order.status}
                       </span>
@@ -191,14 +183,12 @@ export const WorkOrders = () => {
                       {/* Escalated Tag in Red */}
                       {order.escalated === 1 && (
                         <span
+                          className="status-pill"
                           style={{
-                            backgroundColor: "#ef4444",
-                            color: "#ffffff",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
-                            fontSize: "0.7rem",
-                            fontWeight: "800",
-                            letterSpacing: "0.5px"
+                            backgroundColor: "#FEE2E2",
+                            color: "#B91C1C",
+                            border: "1px solid #FCA5A5",
+                            letterSpacing: "0.02em"
                           }}
                           title="SLA Breached - Escalated to plant management"
                         >
@@ -207,26 +197,18 @@ export const WorkOrders = () => {
                       )}
                     </div>
                   </td>
-                  <td style={{ padding: "12px 16px", fontWeight: "600" }}>{order.priority || "-"}</td>
-                  <td style={{ padding: "12px 16px" }}>{order.technician_name || "Unassigned"}</td>
-                  <td style={{ padding: "12px 16px", fontSize: "0.8rem", color: "#4b5563" }}>
+                  <td style={{ fontWeight: "600", color: "#1D1D1F" }}>{order.priority || "-"}</td>
+                  <td style={{ color: "#1D1D1F" }}>{order.technician_name || "Unassigned"}</td>
+                  <td style={{ fontSize: "0.8rem", color: "#6E6E73" }}>
                     {order.sla_due_at ? new Date(order.sla_due_at).toLocaleString() : "-"}
                   </td>
-                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                  <td style={{ textAlign: "center" }}>
                     <Link
                       to={`/work-orders/${order.id}`}
-                      style={{
-                        backgroundColor: "#0a2540",
-                        color: "#ffffff",
-                        padding: "5px 12px",
-                        borderRadius: "4px",
-                        textDecoration: "none",
-                        fontSize: "0.8rem",
-                        fontWeight: "600",
-                        display: "inline-block"
-                      }}
+                      className="btn-quick-fill"
+                      style={{ textDecoration: "none", display: "inline-block" }}
                     >
-                      View &rarr;
+                      View
                     </Link>
                   </td>
                 </tr>
@@ -238,23 +220,11 @@ export const WorkOrders = () => {
 
       {/* Create Work Order Modal */}
       {showCreateModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div className="card" style={{ width: "100%", maxWidth: "520px" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "16px" }}>Submit Work Order</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 style={{ fontSize: "1.35rem", fontWeight: "700", letterSpacing: "-0.025em", marginBottom: "20px" }}>
+              Submit Work Order
+            </h2>
 
             <form onSubmit={handleCreateSubmit}>
               <div className="form-group">
@@ -309,21 +279,15 @@ export const WorkOrders = () => {
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, marginTop: 0 }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
                   Submit Order
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#f3f4f6",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer"
-                  }}
+                  className="btn-muted"
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -335,4 +299,3 @@ export const WorkOrders = () => {
     </div>
   );
 };
-

@@ -1,6 +1,6 @@
 // Login Page (/login)
 // Authenticates users against POST /api/auth/login and POST /api/auth/2fa/verify
-// Pending 2FA tokens are strictly held in component state (never persisted to storage)
+// Features official NLC India logo and brand palette: Deep Royal Blue (#2F2484) & Pure White (#FFFFFF)
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -117,8 +117,19 @@ export const Login = () => {
         {step === "credentials" ? (
           <>
             <div className="login-header">
+              <img
+                src="/nlc-logo.png"
+                alt="NLC India Limited"
+                style={{
+                  width: "72px",
+                  height: "72px",
+                  objectFit: "contain",
+                  margin: "0 auto 14px auto",
+                  display: "block"
+                }}
+              />
               <div className="login-logo-title">NLCIL SecureMaint</div>
-              <div className="login-logo-subtitle">NLC India Limited &bull; Secure Portal Access</div>
+              <div className="login-logo-subtitle">Industrial Asset &amp; Lifecycle Management Portal</div>
             </div>
 
             {error && <div className="alert-error">{error}</div>}
@@ -154,14 +165,16 @@ export const Login = () => {
                 />
               </div>
 
-              <button type="submit" className="btn-primary" disabled={loading}>
+              <button type="submit" className="btn-primary" style={{ width: "100%", marginTop: "8px" }} disabled={loading}>
                 {loading ? "Authenticating..." : "Sign In"}
               </button>
             </form>
 
             {/* Quick Demo Credentials Helper */}
             <div className="quick-demo-accounts">
-              <strong>Quick Demo Accounts (Password: NlcSecure@2026!):</strong>
+              <strong style={{ color: "var(--nlc-royal-blue)", display: "block", marginBottom: "8px" }}>
+                NLCIL Authorized Demo Profiles:
+              </strong>
               <div className="quick-btn-group">
                 <button
                   type="button"
@@ -205,6 +218,17 @@ export const Login = () => {
           /* Step 2: 2FA TOTP Code Entry */
           <>
             <div className="login-header">
+              <img
+                src="/nlc-logo.png"
+                alt="NLC India Limited"
+                style={{
+                  width: "56px",
+                  height: "56px",
+                  objectFit: "contain",
+                  margin: "0 auto 12px auto",
+                  display: "block"
+                }}
+              />
               <div className="login-logo-title">Two-Factor Authentication</div>
               <div className="login-logo-subtitle">Enter the 6-digit code from Google Authenticator</div>
             </div>
@@ -239,7 +263,7 @@ export const Login = () => {
                   style={{
                     display: "block",
                     marginTop: "8px",
-                    color: "var(--nlc-text-muted)",
+                    color: "var(--text-secondary)",
                     textAlign: "center",
                     fontSize: "0.8rem"
                   }}
@@ -251,24 +275,23 @@ export const Login = () => {
               <button
                 type="submit"
                 className="btn-primary"
+                style={{ width: "100%", marginTop: "12px" }}
                 disabled={loading || twoFactorCode.length < 6}
               >
-                {loading ? "Verifying Passcode..." : "Verify & Sign In"}
+                {loading ? "Verifying Passcode..." : "Verify &amp; Sign In"}
               </button>
 
               <button
                 type="button"
-                className="btn-quick-fill"
+                className="btn-muted"
                 style={{
                   width: "100%",
                   marginTop: "12px",
-                  padding: "10px",
-                  textAlign: "center",
-                  fontSize: "0.85rem"
+                  textAlign: "center"
                 }}
                 onClick={handleCancel2fa}
               >
-                &larr; Cancel &amp; Back to Login
+                Cancel &amp; Back to Login
               </button>
             </form>
           </>
@@ -277,5 +300,3 @@ export const Login = () => {
     </div>
   );
 };
-
-
