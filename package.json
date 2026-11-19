@@ -6,6 +6,7 @@
   "scripts": {
     "seed": "npm --prefix backend run seed",
     "reset-2fa": "node backend/reset2fa.js",
+    "demo:reset": "node -e \"const fs = require('fs'); ['backend/nlc.db-wal', 'backend/nlc.db-shm', 'backend/anchor.json'].forEach(f => { if(fs.existsSync(f)) fs.unlinkSync(f); }); fs.copyFileSync('backend/demo-baseline/nlc.db', 'backend/nlc.db'); console.log('Demo baseline restored successfully.');\"",
     "test:api": "npm --prefix backend run test:api"
   }
 }
